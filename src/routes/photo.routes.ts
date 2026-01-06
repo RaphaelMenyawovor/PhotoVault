@@ -8,6 +8,8 @@ import { photoSchema } from '../schemas/photo.schema.js';
 const router = Router();
 
 router.get('/public', getPublicPhotos);
+
+// After the public route the rest must be authenticated
 router.use(verifyToken);
 router.post('/upload', upload.single('image'), validate(photoSchema), uploadPhoto);
 router.get('/my-photos', getMyPhotos);
