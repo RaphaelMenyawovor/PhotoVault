@@ -7,6 +7,7 @@ import photoRoutes from './routes/photo.routes.js';
 import albumRoutes from './routes/album.routes.js';
 import { limiter } from './middleware/limiter.middleware.js';
 import { errorHandler } from './middleware/error.middleware.js';
+import httpLogger from './utils/httpLogger.js';
 
 const app: Express = express();
 
@@ -15,6 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
+app.use(httpLogger);
 
 app.use(limiter);
 
