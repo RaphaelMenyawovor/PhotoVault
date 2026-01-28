@@ -1,11 +1,14 @@
 import type { Request, Response } from 'express';
+import { Prisma } from '../generated/prisma/client.js';
 import prisma from '../configs/prisma.js';
 import type { AuthRequest } from '../middleware/auth.middleware.js';
 import redisClient from '../configs/redis.js';
 import cloudinary from '../configs/cloudinary.js';
 import type { UploadApiResponse } from 'cloudinary';
 import { Readable } from 'stream';
-import logger from '../utils/logger.js';
+import { wideLogger } from '../utils/wideLogger.js';
+
+import { getOptimizedUrls } from '../utils/image.utils.js';
 
 export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
@@ -43,47 +46,119 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
         });
 
         if (photo.visibility === 'PUBLIC') {
-            await redisClient.del('public_photos');
+            await redisClient.incr('public_photos_version');
         }
 
-        return res.status(201).json(photo);
+        return res.status(201).json({
+            ...photo,
+            urls: getOptimizedUrls(photo.publicId, photo.url)
+        });
     } catch (error) {
-        logger.error(error);
+        wideLogger.add('err', { msg: 'Upload failed', stack: (error as Error).stack });
         return res.status(500).json({ error: 'Upload failed' });
     }
 };
 
-export const getPublicPhotos = async (_req: Request, res: Response): Promise<Response> => {
+export const getPublicPhotos = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const cached = await redisClient.get('public_photos');
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+        const search = req.query.search as string || '';
+        const skip = (page - 1) * limit;
+
+        const version = await redisClient.get('public_photos_version') || '1';
+        const cacheKey = `public_photos:v${version}:p${page}:l${limit}:s${search}`;
+        const cached = await redisClient.get(cacheKey);
+
         if (cached) {
             return res.json(JSON.parse(cached));
         }
 
-        const photos = await prisma.photo.findMany({
-            where: { visibility: 'PUBLIC' },
-            include: { user: { select: { id: true, email: true } } },
-            orderBy: { createdAt: 'desc' },
-        });
+        const whereClause: Prisma.PhotoWhereInput = { visibility: 'PUBLIC' };
+        if (search) {
+            whereClause.OR = [
+                { title: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } },
+            ];
+        }
 
-        await redisClient.setEx('public_photos', 3600, JSON.stringify(photos));
+        const [photos, total] = await Promise.all([
+            prisma.photo.findMany({
+                where: whereClause,
+                include: { user: { select: { id: true, email: true } } },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            prisma.photo.count({ where: whereClause }),
+        ]);
 
-        return res.json(photos);
+        const data = photos.map(photo => ({
+            ...photo,
+            urls: getOptimizedUrls(photo.publicId, photo.url)
+        }));
+
+        const response = {
+            data,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+
+        // Cache for 1 hour
+        await redisClient.setEx(cacheKey, 3600, JSON.stringify(response));
+
+        return res.json(response);
     } catch (error) {
-        logger.error(error);
+        wideLogger.add('err', { msg: 'Failed to fetch public photos', stack: (error as Error).stack });
         return res.status(500).json({ error: 'Failed to fetch photos' });
     }
 };
 
 export const getMyPhotos = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
-        const photos = await prisma.photo.findMany({
-            where: { userId: req.user!.userId },
-            orderBy: { createdAt: 'desc' },
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+        const search = req.query.search as string || '';
+        const skip = (page - 1) * limit;
+
+        const whereClause: Prisma.PhotoWhereInput = { userId: req.user!.userId };
+        if (search) {
+            whereClause.OR = [
+                { title: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+
+        const [photos, total] = await Promise.all([
+            prisma.photo.findMany({
+                where: whereClause,
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            prisma.photo.count({ where: whereClause }),
+        ]);
+
+        const data = photos.map(photo => ({
+            ...photo,
+            urls: getOptimizedUrls(photo.publicId, photo.url)
+        }));
+
+        return res.json({
+            data,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
         });
-        return res.json(photos);
     } catch (error) {
-        logger.error(error);
+        wideLogger.add('err', { msg: 'Failed to fetch photos', stack: (error as Error).stack });
         return res.status(500).json({ error: 'Failed to fetch photos' });
     }
 };
@@ -110,12 +185,12 @@ export const deletePhoto = async (req: AuthRequest, res: Response): Promise<Resp
         await prisma.photo.delete({ where: { id: id as string } });
 
         if (photo.visibility === 'PUBLIC') {
-            await redisClient.del('public_photos');
+            await redisClient.incr('public_photos_version');
         }
 
         return res.json({ message: 'Photo deleted' });
     } catch (error) {
-        logger.error(error);
+        wideLogger.add('err', { msg: 'Delete failed', stack: (error as Error).stack });
         return res.status(500).json({ error: 'Delete failed' });
     }
 };
