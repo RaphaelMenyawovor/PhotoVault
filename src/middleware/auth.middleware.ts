@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import logger from '../utils/logger.js';
+import { wideLogger } from '../utils/wideLogger.js';
 
 export interface AuthRequest extends Request {
     user?: {
@@ -9,26 +9,30 @@ export interface AuthRequest extends Request {
     };
 }
 
-export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction)=> {
+export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-        logger.error('No token provided');
+        wideLogger.add('err', { msg: 'No token provided' });
         return res.status(401).json({ error: 'Access denied.' });
     }
 
     try {
         if (!(process.env.JWT_SECRET)) {
-            logger.error('JWT_SECRET is not defined in environment variables');
+            wideLogger.add('err', { msg: 'JWT_SECRET is not defined in environment variables' });
             return res.status(500).json({ error: 'Internal server error' });
         }
         const verified = jwt.verify(token, process.env.JWT_SECRET as string);
         req.user = verified as { userId: string; role: string };
+
+        // Add user context to Wide Log
+        wideLogger.add('user', { id: req.user.userId, role: req.user.role });
+
         next();
     } catch (error) {
         const errorMessage = (error as Error).message;
-        logger.error('Token verification failed:', errorMessage);
+        wideLogger.add('err', { msg: 'Token verification failed', code: 'INVALID_TOKEN', stack: errorMessage });
         return res.status(400).json({ message: 'Invalid token', error });
     }
 };
@@ -36,6 +40,7 @@ export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction)
 export const authorizeRoles = (roles: string[]) => {
     return (req: AuthRequest, res: Response, next: NextFunction) => {
         if (!req.user || !roles.includes(req.user.role)) {
+            wideLogger.add('err', { msg: 'Forbidden access attempt', required_roles: roles, user_role: req.user?.role });
             return res.status(403).json({ error: 'Forbidden' });
         }
         next();

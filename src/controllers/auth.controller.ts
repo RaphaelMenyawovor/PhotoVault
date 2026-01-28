@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import prisma from '../configs/prisma.js';
-import logger from '../utils/logger.js';
+import { wideLogger } from '../utils/wideLogger.js';
 
 export const register = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -31,7 +31,7 @@ export const register = async (req: Request, res: Response): Promise<Response> =
 
         return res.status(201).json({ message: 'User created', token, user: { id: user.id, email: user.email, role: user.role } });
     } catch (error) {
-        logger.error(error);
+        wideLogger.add('err', { msg: 'Registration failed', stack: (error as Error).stack });
         return res.status(500).json({ error: 'Internal server error' });
     }
 };
@@ -58,7 +58,7 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
 
         return res.json({ message: 'Login successful', token, user: { id: user.id, email: user.email, role: user.role } });
     } catch (error) {
-        logger.error(error);
+        wideLogger.add('err', { msg: 'Login failed', stack: (error as Error).stack });
         return res.status(500).json({ error: 'Internal server error' });
     }
 };
