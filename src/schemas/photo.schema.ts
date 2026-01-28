@@ -6,3 +6,5 @@ export const photoSchema = z.object({
     visibility: z.enum(['PUBLIC', 'PRIVATE']).optional(),
     albumId: z.string().optional(),
 });
+
+
