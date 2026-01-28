@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log
+logs
+dist
+.env
+.git
+.gitignore
+Dockerfile
+.dockerignore
+postman_collection.json
+*.md
+coverage
+src/tests
