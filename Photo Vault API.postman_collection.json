@@ -141,6 +141,13 @@
                   "key": "visibility",
                   "value": "PUBLIC",
                   "type": "text"
+                },
+                {
+                  "key": "tags",
+                  "value": "vacation, summer",
+                  "type": "text",
+                  "disabled": true,
+                  "description": "Optional: Manual tags. If omitted, AI tags will be generated."
                 }
               ]
             },

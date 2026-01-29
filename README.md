@@ -11,6 +11,7 @@ A secure, high-performance RESTful API for storing, managing, and sharing person
 *   **Photo Management**: Upload (multipart/form-data), delete, and retrieve photos.
 *   **Album Organization**: Group photos into albums with cover images.
 *   **Search & Pagination**: Optimized query performance with pagination filters (`page`, `limit`) and search (`search`).
+*   **Smart Tags**: AI-powered auto-tagging (via Cloudinary) for improved searchability. Manual tags also supported.
 
 ### Advanced Sharing & Privacy
 *   **Album Sharing**: Grant read access to specific users via email.
