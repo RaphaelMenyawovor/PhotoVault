@@ -5,6 +5,7 @@ export const photoSchema = z.object({
     description: z.string().optional(),
     visibility: z.enum(['PUBLIC', 'PRIVATE']).optional(),
     albumId: z.string().optional(),
+    tags: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
 
