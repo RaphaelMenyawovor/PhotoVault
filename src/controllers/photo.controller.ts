@@ -16,12 +16,24 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        const { title, description, visibility, albumId } = req.body;
+        const { title, description, visibility, albumId, tags } = req.body;
+
+        // Normalize manual tags
+        let manualTags: string[] = [];
+        if (typeof tags === 'string') {
+            manualTags = tags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0);
+        } else if (Array.isArray(tags)) {
+            manualTags = tags.filter((t: unknown) => typeof t === 'string' && t.length > 0) as string[];
+        }
 
         const uploadStream = (buffer: Buffer): Promise<UploadApiResponse> => {
             return new Promise((resolve, reject) => {
                 const stream = cloudinary.uploader.upload_stream(
-                    { folder: 'photovault' },
+                    {
+                        folder: 'photovault',
+                        categorization: 'aws_rek_tagging',
+                        auto_tagging: 0.6
+                    },
                     (error, result) => {
                         if (error) return reject(error);
                         resolve(result as UploadApiResponse);
@@ -33,6 +45,10 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
 
         const result = await uploadStream(req.file.buffer);
 
+        // Combine manual tags with Cloudinary AI tags (ensure uniqueness)
+        const aiTags = result.tags || [];
+        const finalTags = Array.from(new Set([...manualTags, ...aiTags]));
+
         const photo = await prisma.photo.create({
             data: {
                 title,
@@ -42,6 +58,7 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
                 visibility: visibility || 'PUBLIC',
                 userId: req.user!.userId,
                 albumId: albumId || null,
+                tags: finalTags,
             },
         });
 
@@ -79,6 +96,7 @@ export const getPublicPhotos = async (req: Request, res: Response): Promise<Resp
             whereClause.OR = [
                 { title: { contains: search, mode: 'insensitive' } },
                 { description: { contains: search, mode: 'insensitive' } },
+                { tags: { has: search } },
             ];
         }
 
@@ -130,6 +148,7 @@ export const getMyPhotos = async (req: AuthRequest, res: Response): Promise<Resp
             whereClause.OR = [
                 { title: { contains: search, mode: 'insensitive' } },
                 { description: { contains: search, mode: 'insensitive' } },
+                { tags: { has: search } },
             ];
         }
 
