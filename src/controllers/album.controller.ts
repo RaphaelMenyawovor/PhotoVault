@@ -203,7 +203,7 @@ export const addPhotoToAlbum = async (req: AuthRequest, res: Response): Promise<
 export const shareAlbum = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
         const { id } = req.params;
-        const { email } = req.body;
+        const { email, role } = req.body;
 
         const album = await prisma.album.findUnique({ where: { id: id as string } });
 
@@ -221,10 +221,24 @@ export const shareAlbum = async (req: AuthRequest, res: Response): Promise<Respo
             return res.status(404).json({ error: 'User not found' });
         }
 
-        await prisma.sharedAlbum.create({
-            data: {
+        if (userToShare.id === req.user!.userId) {
+            return res.status(400).json({ error: 'Cannot share album with yourself' });
+        }
+
+        await prisma.sharedAlbum.upsert({
+            where: {
+                albumId_userId: {
+                    albumId: album.id,
+                    userId: userToShare.id
+                }
+            },
+            update: {
+                role: role || 'VIEWER'
+            },
+            create: {
                 albumId: album.id,
-                userId: userToShare.id
+                userId: userToShare.id,
+                role: role || 'VIEWER'
             }
         });
 
