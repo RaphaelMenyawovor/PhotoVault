@@ -14,7 +14,8 @@ A secure, high-performance RESTful API for storing, managing, and sharing person
 *   **Smart Tags**: AI-powered auto-tagging (via Cloudinary) for improved searchability. Manual tags also supported.
 
 ### Advanced Sharing & Privacy
-*   **Album Sharing**: Grant read access to specific users via email.
+*   **Collaborative Albums**: Share albums with `EDITOR` role to allow others to upload photos. Default role is `VIEWER`.
+*   **Album Sharing**: Grant read/write access to specific users via email.
 *   **Privacy Controls**: Password-protect sensitive albums (hashed with bcrypt).
 *   **Granular Access**: Owners can view access lists (`sharedUsers`) and revoke permissions.
 *   **Secure Access Logic**: Access is granted if:

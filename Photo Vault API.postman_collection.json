@@ -445,7 +445,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"email\": \"target-user@example.com\"\n}",
+              "raw": "{\n    \"email\": \"target-user@example.com\",\n    \"role\": \"EDITOR\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
