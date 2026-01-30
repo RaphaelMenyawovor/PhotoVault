@@ -18,6 +18,29 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
 
         const { title, description, visibility, albumId, tags } = req.body;
 
+        // Verify Album Permissions if albumId is provided
+        if (albumId) {
+            const album = await prisma.album.findUnique({
+                where: { id: albumId },
+                include: {
+                    sharedWith: {
+                        where: { userId: req.user!.userId }
+                    }
+                }
+            });
+
+            if (!album) {
+                return res.status(404).json({ error: 'Album not found' });
+            }
+
+            const isOwner = album.userId === req.user!.userId;
+            const isEditor = album.sharedWith[0]?.role === 'EDITOR';
+
+            if (!isOwner && !isEditor) {
+                return res.status(403).json({ error: 'You do not have permission to add photos to this album' });
+            }
+        }
+
         // Normalize manual tags
         let manualTags: string[] = [];
         if (typeof tags === 'string') {
@@ -190,13 +213,20 @@ export const deletePhoto = async (req: AuthRequest, res: Response): Promise<Resp
             return res.status(400).json({ error: 'Photo ID is required' });
         }
 
-        const photo = await prisma.photo.findUnique({ where: { id: id as string } });
+        const photo = await prisma.photo.findUnique({
+            where: { id: id as string },
+            include: { album: true }
+        });
 
         if (!photo) {
             return res.status(404).json({ error: 'Photo not found' });
         }
 
-        if (photo.userId !== req.user!.userId && req.user!.role !== 'ADMIN') {
+        const isPhotoOwner = photo.userId === req.user!.userId;
+        const isAlbumOwner = photo.album?.userId === req.user!.userId;
+        const isAdmin = req.user!.role === 'ADMIN';
+
+        if (!isPhotoOwner && !isAlbumOwner && !isAdmin) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
