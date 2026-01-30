@@ -23,6 +23,11 @@ enum Visibility {
   PRIVATE
 }
 
+enum AlbumRole {
+  VIEWER
+  EDITOR
+}
+
 model User {
   id           String        @id @default(uuid())
   email        String        @unique
@@ -74,7 +79,8 @@ model Album {
 model SharedAlbum {
   albumId   String
   userId    String
-  createdAt DateTime @default(now())
+  role      AlbumRole @default(VIEWER)
+  createdAt DateTime  @default(now())
 
   album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
