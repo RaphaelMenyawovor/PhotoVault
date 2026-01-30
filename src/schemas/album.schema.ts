@@ -12,6 +12,7 @@ export const addPhotoToAlbumSchema = z.object({
 export const shareAlbumSchema = z.object({
     body: z.object({
         email: z.string().email(),
+        role: z.enum(['VIEWER', 'EDITOR']).optional(),
     }),
 });
 
