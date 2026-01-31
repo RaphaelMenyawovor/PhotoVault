@@ -73,6 +73,9 @@ model Album {
   sharedWith SharedAlbum[]
   password   String?
 
+  magicLinkToken     String?   @unique
+  magicLinkExpiresAt DateTime?
+
   @@map("albums")
 }
 
