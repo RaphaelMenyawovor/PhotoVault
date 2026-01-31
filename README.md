@@ -29,6 +29,11 @@ A secure, high-performance RESTful API for storing, managing, and sharing person
 *   **Expiration**: Default 7-day expiry, configurable per link.
 *   **Revocation**: Instant revocation of tokens by the owner.
 
+### Soft Delete (Trash Bin)
+*   **Recovery**: Accidental deletions can be restored.
+*   **Trash View**: View deleted photos and albums separately.
+*   **Hard Delete**: Option for permanent removal.
+
 ### Observability & Performance
 *   **Wide Event Logging**: Implements "One Request, One Log" philosophy using `AsyncLocalStorage` to capture high-cardinality context (Trace ID, User ID, HTTP details) in a single JSON blob per request.
 *   **Caching**: Redis caching strategy for high-traffic endpoints.
@@ -181,6 +186,11 @@ npm start
     ```
 *   **Revoke**: `DELETE /api/albums/:id/magic-link`
 *   **Access (Public)**: `GET /api/albums/magic/:token`
+
+#### Trash Management
+*   **View Trash**: `GET /api/albums/trash`
+*   **Restore**: `POST /api/albums/:id/restore`
+*   **Hard Delete**: `DELETE /api/albums/:id/hard`
 #### Retrieve
 *   **My Albums**: `GET /api/albums/my-albums?page=1&limit=10&search=summer`
 *   **Shared With Me**: `GET /api/albums/shared`
