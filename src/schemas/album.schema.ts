@@ -10,14 +10,14 @@ export const addPhotoToAlbumSchema = z.object({
 });
 
 export const shareAlbumSchema = z.object({
-    body: z.object({
-        email: z.string().email(),
-        role: z.enum(['VIEWER', 'EDITOR']).optional(),
-    }),
+    email: z.string().email(),
+    role: z.enum(['VIEWER', 'EDITOR']).optional(),
 });
 
 export const albumPrivacySchema = z.object({
-    body: z.object({
-        password: z.string().min(6).optional().nullable(),
-    }),
+    password: z.string().min(6).optional().nullable(),
+});
+
+export const generateMagicLinkSchema = z.object({
+    expiresInDays: z.number().int().min(1).max(365).optional(), // Default 7 days
 });
