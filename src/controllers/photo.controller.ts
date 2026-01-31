@@ -240,6 +240,9 @@ export const deletePhoto = async (req: AuthRequest, res: Response): Promise<Resp
             await redisClient.incr('public_photos_version');
         }
 
+        wideLogger.addCtx('photo_id', id);
+        wideLogger.addCtx('action', 'photo_soft_delete');
+
         return res.json({ message: 'Photo moved to trash' });
     } catch (error) {
         wideLogger.add('err', { msg: 'Delete failed', stack: (error as Error).stack });
@@ -261,6 +264,9 @@ export const getTrash = async (req: AuthRequest, res: Response): Promise<Respons
             ...photo,
             urls: getOptimizedUrls(photo.publicId, photo.url)
         }));
+
+        wideLogger.addCtx('count', photos.length);
+        wideLogger.addCtx('action', 'photo_view_trash');
 
         return res.json({ data });
     } catch (error) {
@@ -294,6 +300,9 @@ export const restorePhoto = async (req: AuthRequest, res: Response): Promise<Res
             await redisClient.incr('public_photos_version');
         }
 
+        wideLogger.addCtx('photo_id', id);
+        wideLogger.addCtx('action', 'photo_restore');
+
         return res.json({ message: 'Photo restored', data: restored });
 
     } catch (error) {
@@ -320,6 +329,9 @@ export const hardDeletePhoto = async (req: AuthRequest, res: Response): Promise<
 
         await cloudinary.uploader.destroy(photo.publicId);
         await prisma.photo.delete({ where: { id: id as string } });
+
+        wideLogger.addCtx('photo_id', id);
+        wideLogger.addCtx('action', 'photo_hard_delete');
 
         return res.json({ message: 'Photo permanently deleted' });
 

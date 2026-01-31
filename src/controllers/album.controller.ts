@@ -350,6 +350,10 @@ export const generateMagicLink = async (req: AuthRequest, res: Response): Promis
 
         const magicLink = `${req.protocol}://${req.get('host')}/api/albums/magic/${token}`;
 
+        wideLogger.addCtx('album_id', id);
+        wideLogger.addCtx('expires_in_days', expiresInDays);
+        wideLogger.addCtx('action', 'magic_link_generate');
+
         return res.json({
             token,
             expiresAt,
@@ -383,6 +387,11 @@ export const revokeMagicLink = async (req: AuthRequest, res: Response): Promise<
                 magicLinkExpiresAt: null
             }
         });
+
+
+
+        wideLogger.addCtx('album_id', id);
+        wideLogger.addCtx('action', 'magic_link_revoke');
 
         return res.json({ message: 'Magic link revoked successfully' });
 
@@ -462,6 +471,9 @@ export const deleteAlbum = async (req: AuthRequest, res: Response): Promise<Resp
             data: { deletedAt: new Date() }
         });
 
+        wideLogger.addCtx('album_id', id);
+        wideLogger.addCtx('action', 'album_soft_delete');
+
         return res.json({ message: 'Album moved to trash' });
     } catch (error) {
         wideLogger.add('err', { msg: 'Delete album failed', stack: (error as Error).stack });
@@ -487,6 +499,9 @@ export const getTrashAlbums = async (req: AuthRequest, res: Response): Promise<R
                 urls: getOptimizedUrls(photo.publicId, photo.url)
             })),
         }));
+
+        wideLogger.addCtx('count', albums.length);
+        wideLogger.addCtx('action', 'album_view_trash');
 
         return res.json({ data });
     } catch (error) {
@@ -515,6 +530,9 @@ export const restoreAlbum = async (req: AuthRequest, res: Response): Promise<Res
             where: { id: id as string },
             data: { deletedAt: null }
         });
+
+        wideLogger.addCtx('album_id', id);
+        wideLogger.addCtx('action', 'album_restore');
 
         return res.json({ message: 'Album restored', data: restored });
     } catch (error) {
@@ -551,6 +569,9 @@ export const hardDeleteAlbum = async (req: AuthRequest, res: Response): Promise<
         */
 
         await prisma.album.delete({ where: { id: id as string } });
+
+        wideLogger.addCtx('album_id', id);
+        wideLogger.addCtx('action', 'album_hard_delete');
 
         return res.json({ message: 'Album permanently deleted' });
     } catch (error) {
