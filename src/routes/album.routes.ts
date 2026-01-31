@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createAlbum, getMyAlbums, addPhotoToAlbum, shareAlbum, getSharedAlbums, updateAlbumPrivacy, getAlbum, revokeAccess, generateMagicLink, revokeMagicLink, getAlbumByMagicLink, deleteAlbum, getTrashAlbums, restoreAlbum, hardDeleteAlbum } from '../controllers/album.controller.js';
+import { createAlbum, getMyAlbums, addPhotoToAlbum, shareAlbum, getSharedAlbums, updateAlbumPrivacy, getAlbum, revokeAccess, generateMagicLink, revokeMagicLink, getAlbumByMagicLink, deleteAlbum, getTrashAlbums, restoreAlbum, hardDeleteAlbum, downloadAlbum } from '../controllers/album.controller.js';
 import { verifyToken } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validator.middleware.js';
 import { albumSchema, addPhotoToAlbumSchema, shareAlbumSchema, albumPrivacySchema, generateMagicLinkSchema } from '../schemas/album.schema.js';
@@ -21,6 +21,7 @@ router.post('/add-photo', validate(addPhotoToAlbumSchema), addPhotoToAlbum);
 
 // Routes for album sharing and privacy
 router.get('/:id', getAlbum);
+router.get('/:id/download', downloadAlbum); // Bulk Download
 router.post('/:id/share', validate(shareAlbumSchema), shareAlbum);
 router.delete('/:id/share', validate(shareAlbumSchema), revokeAccess);
 router.put('/:id/privacy', validate(albumPrivacySchema), updateAlbumPrivacy);
