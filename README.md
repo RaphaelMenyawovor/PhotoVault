@@ -19,9 +19,15 @@ A secure, high-performance RESTful API for storing, managing, and sharing person
 *   **Privacy Controls**: Password-protect sensitive albums (hashed with bcrypt).
 *   **Granular Access**: Owners can view access lists (`sharedUsers`) and revoke permissions.
 *   **Secure Access Logic**: Access is granted if:
-    1.  User is the **Owner**.
     2.  User is in the **Shared List**.
     3.  User provides the correct **Password** (via `X-Album-Password` header).
+    4.  User accesses via a valid **Magic Link** token.
+
+### Magic Links (Public Access)
+*   **Generate Links**: Create unique, time-limited URLs for albums.
+*   **Secure Tokens**: Uses cryptographically secure random tokens.
+*   **Expiration**: Default 7-day expiry, configurable per link.
+*   **Revocation**: Instant revocation of tokens by the owner.
 
 ### Observability & Performance
 *   **Wide Event Logging**: Implements "One Request, One Log" philosophy using `AsyncLocalStorage` to capture high-cardinality context (Trace ID, User ID, HTTP details) in a single JSON blob per request.
@@ -165,7 +171,16 @@ npm start
     ```json
     { "password": null }
     ```
+    { "password": null }
+    ```
 
+#### Magic Links
+*   **Generate**: `POST /api/albums/:id/magic-link`
+    ```json
+    { "expiresInDays": 7 }
+    ```
+*   **Revoke**: `DELETE /api/albums/:id/magic-link`
+*   **Access (Public)**: `GET /api/albums/magic/:token`
 #### Retrieve
 *   **My Albums**: `GET /api/albums/my-albums?page=1&limit=10&search=summer`
 *   **Shared With Me**: `GET /api/albums/shared`
