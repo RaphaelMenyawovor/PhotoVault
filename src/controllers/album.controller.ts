@@ -301,8 +301,17 @@ export const addPhotoToAlbum = async (req: AuthRequest, res: Response): Promise<
             return res.status(404).json({ error: 'Album or Photo not found' });
         }
 
-        if (album.userId !== req.user!.userId || photo.userId !== req.user!.userId) {
+        const isOwner = album.userId === req.user!.userId;
+        const isEditor = album.sharedWith.some(
+            (share) => share.userId === req.user!.userId && share.role === 'EDITOR'
+        );
+
+        if (!isOwner && !isEditor) {
             return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        if (photo.userId !== req.user!.userId) {
+            return res.status(403).json({ error: 'Forbidden: You can only add your own photos' });
         }
 
         const updatedPhoto = await prisma.photo.update({

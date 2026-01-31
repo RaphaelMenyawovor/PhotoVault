@@ -122,9 +122,6 @@ describe('Push Notifications', () => {
 
         expect(res.status).toBe(200);
 
-        // Expect webpush to be called
-        // Note: Mock assertion disabled due to ESM mocking issues.
-        // Manual verification logs confirmed the service calls webpush.sendNotification.
         /*
         expect(mockSendNotification).toHaveBeenCalledTimes(1);
         
@@ -135,5 +132,28 @@ describe('Push Notifications', () => {
         expect(payload.title).toBe('New Photo Added');
         expect(payload.body).toContain('Push Test Album');
         */
+    });
+
+    it('should allow shared user (EDITOR) to add photo to album', async () => {
+        // Create a photo for shared user
+        const photo = await prisma.photo.create({
+            data: {
+                title: 'Shared User Photo',
+                url: 'https://example.com/shared_photo.jpg',
+                publicId: `push_shared_${Date.now()}`,
+                userId: sharedUserId,
+                visibility: 'PRIVATE'
+            }
+        });
+
+        const res = await request(app)
+            .post('/api/albums/add-photo')
+            .set('Authorization', `Bearer ${sharedToken}`)
+            .send({
+                albumId: albumId,
+                photoId: photo.id
+            });
+
+        expect(res.status).toBe(200);
     });
 });
