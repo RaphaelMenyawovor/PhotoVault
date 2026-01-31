@@ -114,7 +114,7 @@ export const getPublicPhotos = async (req: Request, res: Response): Promise<Resp
             return res.json(JSON.parse(cached));
         }
 
-        const whereClause: Prisma.PhotoWhereInput = { visibility: 'PUBLIC' };
+        const whereClause: Prisma.PhotoWhereInput = { visibility: 'PUBLIC', deletedAt: null };
         if (search) {
             whereClause.OR = [
                 { title: { contains: search, mode: 'insensitive' } },
@@ -166,7 +166,7 @@ export const getMyPhotos = async (req: AuthRequest, res: Response): Promise<Resp
         const search = req.query.search as string || '';
         const skip = (page - 1) * limit;
 
-        const whereClause: Prisma.PhotoWhereInput = { userId: req.user!.userId };
+        const whereClause: Prisma.PhotoWhereInput = { userId: req.user!.userId, deletedAt: null };
         if (search) {
             whereClause.OR = [
                 { title: { contains: search, mode: 'insensitive' } },
@@ -230,16 +230,101 @@ export const deletePhoto = async (req: AuthRequest, res: Response): Promise<Resp
             return res.status(403).json({ error: 'Forbidden' });
         }
 
-        await cloudinary.uploader.destroy(photo.publicId);
-        await prisma.photo.delete({ where: { id: id as string } });
+        // Soft delete
+        await prisma.photo.update({
+            where: { id: id as string },
+            data: { deletedAt: new Date() }
+        });
 
-        if (photo.visibility === 'PUBLIC') {
+        if (photo.visibility === 'PUBLIC' && redisClient.isOpen) {
             await redisClient.incr('public_photos_version');
         }
 
-        return res.json({ message: 'Photo deleted' });
+        return res.json({ message: 'Photo moved to trash' });
     } catch (error) {
         wideLogger.add('err', { msg: 'Delete failed', stack: (error as Error).stack });
         return res.status(500).json({ error: 'Delete failed' });
+    }
+};
+
+export const getTrash = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        const photos = await prisma.photo.findMany({
+            where: {
+                userId: req.user!.userId,
+                deletedAt: { not: null }
+            },
+            orderBy: { deletedAt: 'desc' }
+        });
+
+        const data = photos.map(photo => ({
+            ...photo,
+            urls: getOptimizedUrls(photo.publicId, photo.url)
+        }));
+
+        return res.json({ data });
+    } catch (error) {
+        wideLogger.add('err', { msg: 'Failed to fetch trash', stack: (error as Error).stack });
+        return res.status(500).json({ error: 'Failed to fetch trash' });
+    }
+};
+
+export const restorePhoto = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        const { id } = req.params;
+
+        const photo = await prisma.photo.findUnique({
+            where: { id: id as string }
+        });
+
+        if (!photo) {
+            return res.status(404).json({ error: 'Photo not found' });
+        }
+
+        if (photo.userId !== req.user!.userId) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        const restored = await prisma.photo.update({
+            where: { id: id as string },
+            data: { deletedAt: null }
+        });
+
+        if (restored.visibility === 'PUBLIC' && redisClient.isOpen) {
+            await redisClient.incr('public_photos_version');
+        }
+
+        return res.json({ message: 'Photo restored', data: restored });
+
+    } catch (error) {
+        wideLogger.add('err', { msg: 'Restore failed', stack: (error as Error).stack });
+        return res.status(500).json({ error: 'Restore failed' });
+    }
+};
+
+export const hardDeletePhoto = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        const { id } = req.params;
+
+        const photo = await prisma.photo.findUnique({
+            where: { id: id as string }
+        });
+
+        if (!photo) {
+            return res.status(404).json({ error: 'Photo not found' });
+        }
+
+        if (photo.userId !== req.user!.userId && req.user!.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        await cloudinary.uploader.destroy(photo.publicId);
+        await prisma.photo.delete({ where: { id: id as string } });
+
+        return res.json({ message: 'Photo permanently deleted' });
+
+    } catch (error) {
+        wideLogger.add('err', { msg: 'Hard delete failed', stack: (error as Error).stack });
+        return res.status(500).json({ error: 'Hard delete failed' });
     }
 };
