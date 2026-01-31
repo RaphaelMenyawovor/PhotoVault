@@ -285,11 +285,16 @@ export const getMyAlbums = async (req: AuthRequest, res: Response): Promise<Resp
     }
 };
 
+import { sendNotification } from '../services/push.service.js';
+
 export const addPhotoToAlbum = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
         const { albumId, photoId } = req.body;
 
-        const album = await prisma.album.findUnique({ where: { id: albumId } });
+        const album = await prisma.album.findUnique({
+            where: { id: albumId },
+            include: { sharedWith: true }
+        });
         const photo = await prisma.photo.findUnique({ where: { id: photoId } });
 
         if (!album || !photo || album.deletedAt) {
@@ -304,6 +309,15 @@ export const addPhotoToAlbum = async (req: AuthRequest, res: Response): Promise<
             where: { id: photoId },
             data: { albumId },
         });
+
+        // Notify shared users
+        for (const share of album.sharedWith) {
+            sendNotification(share.userId, {
+                title: 'New Photo Added',
+                body: `A new photo was added to album "${album.title}"`,
+                url: `/albums/${album.id}`
+            });
+        }
 
         return res.json(updatedPhoto);
     } catch (error) {

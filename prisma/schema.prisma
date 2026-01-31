@@ -29,15 +29,16 @@ enum AlbumRole {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  password     String
-  role         Role          @default(USER)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  photos       Photo[]
-  albums       Album[]
-  sharedAlbums SharedAlbum[]
+  id                String             @id @default(uuid())
+  email             String             @unique
+  password          String
+  role              Role               @default(USER)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  photos            Photo[]
+  albums            Album[]
+  sharedAlbums      SharedAlbum[]
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
 }
@@ -92,4 +93,16 @@ model SharedAlbum {
 
   @@id([albumId, userId])
   @@map("shared_albums")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  endpoint  String   @unique
+  keys      Json // Stores { p256dh, auth }
+  userId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
 }
