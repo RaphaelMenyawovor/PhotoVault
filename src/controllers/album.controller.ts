@@ -6,6 +6,117 @@ import type { AuthRequest } from '../middleware/auth.middleware.js';
 import { wideLogger } from '../utils/wideLogger.js';
 import { getOptimizedUrls } from '../utils/image.utils.js';
 import bcrypt from 'bcrypt';
+import archiver from 'archiver';
+import axios from 'axios';
+
+export const downloadAlbum = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        const album = await prisma.album.findUnique({
+            where: { id: id as string },
+            include: {
+                sharedWith: true
+            }
+        });
+
+        if (!album || album.deletedAt) {
+            res.status(404).json({ error: 'Album not found' });
+            return;
+        }
+
+        // Access Control
+        const isOwner = album.userId === req.user!.userId;
+        const isShared = album.sharedWith.some(s => s.userId === req.user!.userId);
+
+        if (!isOwner && !isShared) {
+            res.status(403).json({ error: 'Forbidden' });
+            return;
+        }
+
+        const photos = await prisma.photo.findMany({
+            where: {
+                albumId: album.id,
+                deletedAt: null
+            }
+        });
+
+        if (photos.length === 0) {
+            res.status(404).json({ error: 'No photos to download' });
+            return;
+        }
+
+        const archive = archiver('zip', {
+            zlib: { level: 9 } // Sets the compression level.
+        });
+
+        // Handle archive warnings/errors
+        archive.on('warning', (err) => {
+            if (err.code === 'ENOENT') {
+                console.warn('Archiver warning:', err);
+            } else {
+                throw err;
+            }
+        });
+
+        archive.on('error', (err) => {
+            throw err;
+        });
+
+        // Set Headers
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${album.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.zip"`);
+
+        // Pipe archive data to the response
+        archive.pipe(res);
+
+        // Append files
+        let processed = 0;
+        for (const photo of photos) {
+            // Stop processing if client disconnected
+            if (res.writableEnded || res.closed) {
+                console.log('Client disconnected, stopping download');
+                break;
+            }
+
+            try {
+                const response = await axios({
+                    url: photo.url,
+                    method: 'GET',
+                    responseType: 'stream'
+                });
+
+                // Try to infer extension from URL or Content-Type, default to .jpg
+                let extension = '.jpg';
+                if (photo.url.includes('.')) {
+                    const urlExt = photo.url.split('.').pop();
+                    if (urlExt && /^[a-z0-9]+$/i.test(urlExt) && urlExt.length < 5) {
+                        extension = `.${urlExt}`;
+                    }
+                }
+
+                archive.append(response.data, { name: `${photo.title?.replace(/[^a-z0-9]/gi, '_') || 'photo'}_${photo.id}${extension}` });
+                processed++;
+            } catch (err) {
+                console.error(`Failed to download photo ${photo.id}`, err);
+                // Continue with other photos
+            }
+        }
+
+        await archive.finalize();
+
+        wideLogger.addCtx('album_id', id);
+        wideLogger.addCtx('photo_count', processed);
+        wideLogger.addCtx('action', 'album_download_zip');
+
+        // Response is already sent via pipe, so we don't return res.json()
+    } catch (error) {
+        wideLogger.add('err', { msg: 'Download album failed', stack: (error as Error).stack });
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Download album failed' });
+        }
+    }
+};
 
 export const createAlbum = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
