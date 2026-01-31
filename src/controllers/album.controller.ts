@@ -1,4 +1,5 @@
-import type { Response } from 'express';
+import type { Response, Request } from 'express';
+import crypto from 'crypto';
 import { Prisma } from '../generated/prisma/client.js';
 import prisma from '../configs/prisma.js';
 import type { AuthRequest } from '../middleware/auth.middleware.js';
@@ -314,5 +315,126 @@ export const updateAlbumPrivacy = async (req: AuthRequest, res: Response): Promi
     } catch (error) {
         wideLogger.add('err', { msg: 'Failed to update privacy', stack: (error as Error).stack });
         return res.status(500).json({ error: 'Failed to update privacy' });
+    }
+};
+
+export const generateMagicLink = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        const { id } = req.params;
+        const { expiresInDays = 7 } = req.body;
+
+        const album = await prisma.album.findUnique({ where: { id: id as string } });
+
+        if (!album) {
+            return res.status(404).json({ error: 'Album not found' });
+        }
+
+        if (album.userId !== req.user!.userId) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+
+        await prisma.album.update({
+            where: { id: album.id },
+            data: {
+                magicLinkToken: token,
+                magicLinkExpiresAt: expiresAt
+            }
+        });
+
+        const magicLink = `${req.protocol}://${req.get('host')}/api/albums/magic/${token}`;
+
+        return res.json({
+            token,
+            expiresAt,
+            magicLink
+        });
+
+    } catch (error) {
+        wideLogger.add('err', { msg: 'Failed to generate magic link', stack: (error as Error).stack });
+        return res.status(500).json({ error: 'Failed to generate magic link' });
+    }
+};
+
+export const revokeMagicLink = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        const { id } = req.params;
+
+        const album = await prisma.album.findUnique({ where: { id: id as string } });
+
+        if (!album) {
+            return res.status(404).json({ error: 'Album not found' });
+        }
+
+        if (album.userId !== req.user!.userId) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        await prisma.album.update({
+            where: { id: album.id },
+            data: {
+                magicLinkToken: null,
+                magicLinkExpiresAt: null
+            }
+        });
+
+        return res.json({ message: 'Magic link revoked successfully' });
+
+    } catch (error) {
+        wideLogger.add('err', { msg: 'Failed to revoke magic link', stack: (error as Error).stack });
+        return res.status(500).json({ error: 'Failed to revoke magic link' });
+    }
+};
+
+export const getAlbumByMagicLink = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const { token } = req.params;
+
+        if (!token) {
+            return res.status(400).json({ error: 'Token is required' });
+        }
+
+        const album = await prisma.album.findUnique({
+            where: { magicLinkToken: token as string },
+            include: {
+                photos: true,
+                user: {
+                    select: {
+                        id: true,
+                        email: true
+                    }
+                }
+            }
+        });
+
+        if (!album) {
+            return res.status(404).json({ error: 'Album not found or link is invalid' });
+        }
+
+        // Check expiration
+        if (!album.magicLinkExpiresAt || new Date() > album.magicLinkExpiresAt) {
+            return res.status(410).json({ error: 'Magic link has expired' });
+        }
+
+        const data = {
+            ...album,
+            photos: album.photos.map(photo => ({
+                ...photo,
+                urls: getOptimizedUrls(photo.publicId, photo.url)
+            })),
+            isOwner: false, // Public viewer
+            password: undefined,
+            magicLinkToken: undefined,
+            magicLinkExpiresAt: album.magicLinkExpiresAt
+        };
+
+        return res.json({ data });
+
+    } catch (error) {
+        wideLogger.add('err', { msg: 'Failed to access album via magic link', stack: (error as Error).stack });
+        return res.status(500).json({ error: 'Failed to access album' });
     }
 };
