@@ -3,6 +3,10 @@ import "dotenv/config";
 import prisma from './configs/prisma.js';
 import redisClient from './configs/redis.js';
 import { createServer } from 'http';
+import { startCleanupJob } from './jobs/cleanup.job.js';
+
+// Initialize scheduled jobs
+startCleanupJob();
 
 const PORT = process.env.PORT || 3000;
 
