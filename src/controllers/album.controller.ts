@@ -8,6 +8,7 @@ import { getOptimizedUrls } from '../utils/image.utils.js';
 import bcrypt from 'bcrypt';
 import archiver from 'archiver';
 import axios from 'axios';
+import cloudinary from '../configs/cloudinary.js';
 
 export const downloadAlbum = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
@@ -691,16 +692,17 @@ export const hardDeleteAlbum = async (req: AuthRequest, res: Response): Promise<
             return res.status(403).json({ error: 'Forbidden' });
         }
 
-        // Note: Photos are not automatically deleted from Cloudinary by this action unless we explicitly do so.
-        // For now, relies on Cascade delete in DB, but Cloudinary images will be orphaned if we don't handle them.
-        // Implementing simple cascading hard delete for now.
+        // Fetch and delete all photos from Cloudinary
+        const photos = await prisma.photo.findMany({ where: { albumId: id as string } });
 
-        /* 
-           Ideally, we should fetch all photos in this album and delete them from Cloudinary first.
-           Implementation for future improvement:
-           const photos = await prisma.photo.findMany({ where: { albumId: id } });
-           for (const p of photos) await cloudinary.uploader.destroy(p.publicId);
-        */
+        // Delete individually to ensure Cloudinary cleanup
+        for (const p of photos) {
+            try {
+                await cloudinary.uploader.destroy(p.publicId);
+            } catch (err) {
+                wideLogger.add('err', { msg: 'Failed to delete photo from Cloudinary during album hard delete', photoId: p.id, error: (err as Error).message });
+            }
+        }
 
         await prisma.album.delete({ where: { id: id as string } });
 
