@@ -40,6 +40,7 @@ model User {
   albums            Album[]
   sharedAlbums      SharedAlbum[]
   pushSubscriptions PushSubscription[]
+  auditLogs         AuditLog[]
 
   @@map("users")
 }
@@ -106,4 +107,17 @@ model PushSubscription {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("push_subscriptions")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String // e.g., "USER_BAN", "ROLE_UPDATE"
+  details   Json? // { targetUserId, oldValue, newValue, reason }
+  adminId   String
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id])
+
+  @@map("audit_logs")
 }
