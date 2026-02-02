@@ -15,8 +15,8 @@ export const logAction = async (adminId: string, action: string, details: AuditD
             data: {
                 adminId,
                 action,
-                details: details as any, // Prisma Json type handled automatically typically, validation might be stricter
-                ipAddress
+                details: details as any,
+                ipAddress: ipAddress ?? null
             }
         });
 

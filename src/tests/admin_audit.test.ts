@@ -47,10 +47,14 @@ describe('Advanced Admin Features', () => {
         // Verify Audit Log Created
         const logs = await prisma.auditLog.findMany();
         expect(logs.length).toBe(1);
-        expect(logs[0].action).toBe('ROLE_UPDATE');
-        expect(logs[0].adminId).toBeDefined();
+        const log = logs[0];
+        expect(log).toBeDefined();
+        if (!log) return;
+
+        expect(log.action).toBe('ROLE_UPDATE');
+        expect(log.adminId).toBeDefined();
         // Check details safely (it's Json)
-        const details: any = logs[0].details;
+        const details: any = log.details;
         expect(details.targetUserId).toBe(userId);
         expect(details.newValue).toBe('BANNED');
     });
