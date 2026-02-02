@@ -34,6 +34,15 @@ A secure, high-performance RESTful API for storing, managing, and sharing person
 *   **Trash View**: View deleted photos and albums separately.
 *   **Hard Delete**: Option for permanent removal.
 
+### Automated Trash Cleanup
+*   **Stale Item Removal**: Automatically hard-deletes photos and albums that have been in the trash for more than 30 days.
+*   **Cron Job**: Runs daily at midnight to keep the system clean and performant.
+
+### Admin Dashboard & Audit
+*   **User Management**: Admin API to list users, ban users, and update roles.
+*   **Audit Logging**: Detailed DB logging of all critical admin actions (Bans, Role Updates) for accountability.
+*   **User Stats**: View storage usage (photo/album counts) per user.
+
 ### Observability & Performance
 *   **Wide Event Logging**: Implements "One Request, One Log" philosophy using `AsyncLocalStorage` to capture high-cardinality context (Trace ID, User ID, HTTP details) in a single JSON blob per request.
 *   **Caching**: Redis caching strategy for high-traffic endpoints.
