@@ -12,6 +12,7 @@ describe('Admin User Management', () => {
 
     beforeAll(async () => {
         // Cleanup
+        await prisma.auditLog.deleteMany();
         await prisma.photo.deleteMany();
         await prisma.album.deleteMany();
         await prisma.user.deleteMany();
