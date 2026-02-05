@@ -6,7 +6,7 @@ import { wideLogger } from '../utils/wideLogger.js';
 
 export const register = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const { email, password, role } = req.body;
+        const { email, password } = req.body;
 
         const existingUser = await prisma.user.findUnique({ where: { email } });
         if (existingUser) {
@@ -19,7 +19,7 @@ export const register = async (req: Request, res: Response): Promise<Response> =
             data: {
                 email,
                 password: hashedPassword,
-                role: role || 'USER',
+                role: 'USER',
             },
         });
 
