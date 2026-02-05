@@ -1,7 +1,5 @@
-import { PrismaClient } from '../src/generated/prisma/client.js';
+import prisma from '../src/configs/prisma.js';
 import bcrypt from 'bcrypt';
-
-const prisma = new PrismaClient();
 
 async function main() {
     const email = 'admin@photovault.com';
