@@ -11,6 +11,7 @@
     "dev": "nodemon --watch 'src/**/*.ts' --exec 'tsx' src/server.ts | pino-pretty -t \"ts\" -l \"sev\" -m \"msg\" --ignore \"pid,hostname\"",
     "p:gen": "prisma generate",
     "p:mig": "prisma migrate dev",
+    "seed": "tsx prisma/seed.ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles"
   },
   "repository": {
