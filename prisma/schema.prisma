@@ -5,8 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -41,6 +40,9 @@ model User {
   sharedAlbums      SharedAlbum[]
   pushSubscriptions PushSubscription[]
   auditLogs         AuditLog[]
+
+  resetToken       String?
+  resetTokenExpiry DateTime?
 
   @@map("users")
 }
