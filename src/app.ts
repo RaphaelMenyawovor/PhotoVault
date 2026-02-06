@@ -13,6 +13,11 @@ import { wideLoggerMiddleware } from './middleware/wideLogger.middleware.js';
 
 const app: Express = express();
 
+// Initialize Passport
+import './configs/passport.js';
+import passport from 'passport';
+app.use(passport.initialize());
+
 // 1. Initialize Wide Logger FIRST
 app.use(wideLoggerMiddleware);
 

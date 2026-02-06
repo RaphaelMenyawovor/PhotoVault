@@ -137,3 +137,34 @@ export const resetPassword = async (req: Request, res: Response): Promise<Respon
         return res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+export const googleCallback = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        // User is attached to req.user by passport
+        const user = req.user as any;
+
+        if (!user) {
+            return res.status(401).json({ error: 'Authentication failed' });
+        }
+
+        // Generate JWT
+        const token = jwt.sign(
+            { userId: user.id, role: user.role },
+            process.env.JWT_SECRET as string,
+            { expiresIn: '1d' }
+        );
+
+        // Ideally redirect to frontend with token
+        // For API, we might return JSON or HTML with script to postMessage
+        // Assumption: Redirecting to frontend with token in query param
+        // const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        // return res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+
+        // For simple testing/API usage now:
+        return res.json({ message: 'Google Login Successful', token, user });
+
+    } catch (error) {
+        wideLogger.add('err', { msg: 'Google Callback Error', error: (error as Error).message });
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+};
