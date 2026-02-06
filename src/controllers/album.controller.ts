@@ -1,6 +1,6 @@
 import type { Response, Request } from 'express';
 import crypto from 'crypto';
-import { Prisma } from '../generated/prisma/client.js';
+import { Prisma } from '@prisma/client';
 import prisma from '../configs/prisma.js';
 import type { AuthRequest } from '../middleware/auth.middleware.js';
 import { wideLogger } from '../utils/wideLogger.js';

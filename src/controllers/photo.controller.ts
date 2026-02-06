@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { Prisma } from '../generated/prisma/client.js';
+import { Prisma } from '@prisma/client';
 import prisma from '../configs/prisma.js';
 import type { AuthRequest } from '../middleware/auth.middleware.js';
 import redisClient from '../configs/redis.js';
