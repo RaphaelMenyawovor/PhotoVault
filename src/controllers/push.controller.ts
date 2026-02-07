@@ -6,7 +6,7 @@ import { wideLogger } from '../utils/wideLogger.js';
 export const subscribe = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { endpoint, keys } = req.body;
-        const userId = req.user!.userId;
+        const userId = req.user!.id;
 
         // Upsert subscription to prevent duplicates
         // Note: endpoint is unique in schema, but we want to handle the case where correct user updates keys

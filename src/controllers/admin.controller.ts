@@ -74,7 +74,7 @@ export const updateUserRole = async (req: AuthRequest, res: Response): Promise<R
 
         // Audit Log
         if (req.user) {
-            await logAction(req.user.userId, 'ROLE_UPDATE', {
+            await logAction(req.user.id, 'ROLE_UPDATE', {
                 targetUserId: id as string,
                 oldValue: currentUser.role,
                 newValue: role

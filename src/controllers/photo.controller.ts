@@ -24,7 +24,7 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
                 where: { id: albumId },
                 include: {
                     sharedWith: {
-                        where: { userId: req.user!.userId }
+                        where: { userId: req.user!.id }
                     }
                 }
             });
@@ -33,7 +33,7 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
                 return res.status(404).json({ error: 'Album not found' });
             }
 
-            const isOwner = album.userId === req.user!.userId;
+            const isOwner = album.userId === req.user!.id;
             const isEditor = album.sharedWith[0]?.role === 'EDITOR';
 
             if (!isOwner && !isEditor) {
@@ -79,7 +79,7 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
                 url: result.secure_url,
                 publicId: result.public_id,
                 visibility: visibility || 'PUBLIC',
-                userId: req.user!.userId,
+                userId: req.user!.id,
                 albumId: albumId || null,
                 tags: finalTags,
             },
@@ -166,7 +166,7 @@ export const getMyPhotos = async (req: AuthRequest, res: Response): Promise<Resp
         const search = req.query.search as string || '';
         const skip = (page - 1) * limit;
 
-        const whereClause: Prisma.PhotoWhereInput = { userId: req.user!.userId, deletedAt: null };
+        const whereClause: Prisma.PhotoWhereInput = { userId: req.user!.id, deletedAt: null };
         if (search) {
             whereClause.OR = [
                 { title: { contains: search, mode: 'insensitive' } },
@@ -222,8 +222,8 @@ export const deletePhoto = async (req: AuthRequest, res: Response): Promise<Resp
             return res.status(404).json({ error: 'Photo not found' });
         }
 
-        const isPhotoOwner = photo.userId === req.user!.userId;
-        const isAlbumOwner = photo.album?.userId === req.user!.userId;
+        const isPhotoOwner = photo.userId === req.user!.id;
+        const isAlbumOwner = photo.album?.userId === req.user!.id;
         const isAdmin = req.user!.role === 'ADMIN';
 
         if (!isPhotoOwner && !isAlbumOwner && !isAdmin) {
@@ -254,7 +254,7 @@ export const getTrash = async (req: AuthRequest, res: Response): Promise<Respons
     try {
         const photos = await prisma.photo.findMany({
             where: {
-                userId: req.user!.userId,
+                userId: req.user!.id,
                 deletedAt: { not: null }
             },
             orderBy: { deletedAt: 'desc' }
@@ -287,7 +287,7 @@ export const restorePhoto = async (req: AuthRequest, res: Response): Promise<Res
             return res.status(404).json({ error: 'Photo not found' });
         }
 
-        if (photo.userId !== req.user!.userId) {
+        if (photo.userId !== req.user!.id) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
@@ -323,7 +323,7 @@ export const hardDeletePhoto = async (req: AuthRequest, res: Response): Promise<
             return res.status(404).json({ error: 'Photo not found' });
         }
 
-        if (photo.userId !== req.user!.userId && req.user!.role !== 'ADMIN') {
+        if (photo.userId !== req.user!.id && req.user!.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Forbidden' });
         }
 

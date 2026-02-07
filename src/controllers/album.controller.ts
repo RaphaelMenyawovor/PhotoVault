@@ -27,8 +27,8 @@ export const downloadAlbum = async (req: AuthRequest, res: Response): Promise<vo
         }
 
         // Access Control
-        const isOwner = album.userId === req.user!.userId;
-        const isShared = album.sharedWith.some(s => s.userId === req.user!.userId);
+        const isOwner = album.userId === req.user!.id;
+        const isShared = album.sharedWith.some(s => s.userId === req.user!.id);
 
         if (!isOwner && !isShared) {
             res.status(403).json({ error: 'Forbidden' });
@@ -126,7 +126,7 @@ export const createAlbum = async (req: AuthRequest, res: Response): Promise<Resp
         const album = await prisma.album.create({
             data: {
                 title,
-                userId: req.user!.userId,
+                userId: req.user!.id,
             },
         });
 
@@ -164,8 +164,8 @@ export const getAlbum = async (req: AuthRequest, res: Response): Promise<Respons
         }
 
         // Access Control Logic
-        const isOwner = album.userId === req.user!.userId;
-        const isShared = album.sharedWith.some((share) => share.userId === req.user!.userId);
+        const isOwner = album.userId === req.user!.id;
+        const isShared = album.sharedWith.some((share) => share.userId === req.user!.id);
 
         if (!isOwner && !isShared) {
             return res.status(403).json({ error: 'Forbidden' });
@@ -210,7 +210,7 @@ export const revokeAccess = async (req: AuthRequest, res: Response): Promise<Res
             return res.status(404).json({ error: 'Album not found' });
         }
 
-        if (album.userId !== req.user!.userId) {
+        if (album.userId !== req.user!.id) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
@@ -247,7 +247,7 @@ export const getMyAlbums = async (req: AuthRequest, res: Response): Promise<Resp
         const search = req.query.search as string || '';
         const skip = (page - 1) * limit;
 
-        const whereClause: Prisma.AlbumWhereInput = { userId: req.user!.userId, deletedAt: null };
+        const whereClause: Prisma.AlbumWhereInput = { userId: req.user!.id, deletedAt: null };
         if (search) {
             whereClause.title = { contains: search, mode: 'insensitive' };
         }
@@ -302,16 +302,16 @@ export const addPhotoToAlbum = async (req: AuthRequest, res: Response): Promise<
             return res.status(404).json({ error: 'Album or Photo not found' });
         }
 
-        const isOwner = album.userId === req.user!.userId;
+        const isOwner = album.userId === req.user!.id;
         const isEditor = album.sharedWith.some(
-            (share) => share.userId === req.user!.userId && share.role === 'EDITOR'
+            (share) => share.userId === req.user!.id && share.role === 'EDITOR'
         );
 
         if (!isOwner && !isEditor) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
-        if (photo.userId !== req.user!.userId) {
+        if (photo.userId !== req.user!.id) {
             return res.status(403).json({ error: 'Forbidden: You can only add your own photos' });
         }
 
@@ -347,7 +347,7 @@ export const shareAlbum = async (req: AuthRequest, res: Response): Promise<Respo
             return res.status(404).json({ error: 'Album not found' });
         }
 
-        if (album.userId !== req.user!.userId) {
+        if (album.userId !== req.user!.id) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
@@ -357,7 +357,7 @@ export const shareAlbum = async (req: AuthRequest, res: Response): Promise<Respo
             return res.status(404).json({ error: 'User not found' });
         }
 
-        if (userToShare.id === req.user!.userId) {
+        if (userToShare.id === req.user!.id) {
             return res.status(400).json({ error: 'Cannot share album with yourself' });
         }
 
@@ -393,7 +393,7 @@ export const getSharedAlbums = async (req: AuthRequest, res: Response): Promise<
     try {
         const sharedAlbums = await prisma.sharedAlbum.findMany({
             where: {
-                userId: req.user!.userId,
+                userId: req.user!.id,
                 album: { deletedAt: null }
             },
             include: {
@@ -435,7 +435,7 @@ export const updateAlbumPrivacy = async (req: AuthRequest, res: Response): Promi
             return res.status(404).json({ error: 'Album not found' });
         }
 
-        if (album.userId !== req.user!.userId) {
+        if (album.userId !== req.user!.id) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
@@ -467,7 +467,7 @@ export const generateMagicLink = async (req: AuthRequest, res: Response): Promis
             return res.status(404).json({ error: 'Album not found' });
         }
 
-        if (album.userId !== req.user!.userId) {
+        if (album.userId !== req.user!.id) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
@@ -511,7 +511,7 @@ export const revokeMagicLink = async (req: AuthRequest, res: Response): Promise<
             return res.status(404).json({ error: 'Album not found' });
         }
 
-        if (album.userId !== req.user!.userId) {
+        if (album.userId !== req.user!.id) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
@@ -596,7 +596,7 @@ export const deleteAlbum = async (req: AuthRequest, res: Response): Promise<Resp
             return res.status(404).json({ error: 'Album not found' });
         }
 
-        if (album.userId !== req.user!.userId && req.user!.role !== 'ADMIN') {
+        if (album.userId !== req.user!.id && req.user!.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
@@ -620,7 +620,7 @@ export const getTrashAlbums = async (req: AuthRequest, res: Response): Promise<R
     try {
         const albums = await prisma.album.findMany({
             where: {
-                userId: req.user!.userId,
+                userId: req.user!.id,
                 deletedAt: { not: null }
             },
             include: { photos: { take: 1 } },
@@ -657,7 +657,7 @@ export const restoreAlbum = async (req: AuthRequest, res: Response): Promise<Res
             return res.status(404).json({ error: 'Album not found' });
         }
 
-        if (album.userId !== req.user!.userId) {
+        if (album.userId !== req.user!.id) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
@@ -688,7 +688,7 @@ export const hardDeleteAlbum = async (req: AuthRequest, res: Response): Promise<
             return res.status(404).json({ error: 'Album not found' });
         }
 
-        if (album.userId !== req.user!.userId && req.user!.role !== 'ADMIN') {
+        if (album.userId !== req.user!.id && req.user!.role !== 'ADMIN') {
             return res.status(403).json({ error: 'Forbidden' });
         }
 

@@ -3,10 +3,7 @@ import jwt from 'jsonwebtoken';
 import { wideLogger } from '../utils/wideLogger.js';
 
 export interface AuthRequest extends Request {
-    user?: {
-        userId: string;
-        role: string;
-    };
+    // User is now defined globally in Express.User
 }
 
 export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -23,11 +20,14 @@ export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction)
             wideLogger.add('err', { msg: 'JWT_SECRET is not defined in environment variables' });
             return res.status(500).json({ error: 'Internal server error' });
         }
-        const verified = jwt.verify(token, process.env.JWT_SECRET as string);
-        req.user = verified as { userId: string; role: string };
+        const verified = jwt.verify(token, process.env.JWT_SECRET as string) as { userId: string; role: string };
+        req.user = {
+            id: verified.userId,
+            role: verified.role
+        };
 
         // Add user context to Wide Log
-        wideLogger.add('user', { id: req.user.userId, role: req.user.role });
+        wideLogger.add('user', { id: req.user.id, role: req.user.role });
 
         next();
     } catch (error) {
