@@ -38,6 +38,17 @@ A secure, high-performance RESTful API for storing, managing, and sharing person
 *   **Stale Item Removal**: Automatically hard-deletes photos and albums that have been in the trash for more than 30 days.
 *   **Cron Job**: Runs daily at midnight to keep the system clean and performant.
 
+### Enhanced Authentication
+*   **Google OAuth**: Login and Signup using Google Accounts.
+*   **Password Reset**: Secure forgot-password flow with email delivery (via Resend) and hashed tokens.
+
+### Push Notifications
+*   **Real-time Alerts**: Subscribe to push notifications for album updates (e.g., new photos in shared albums).
+*   **Web Push Standard**: VAPID-based secure push delivery.
+
+### Bulk Operations
+*   **Download Album**: Download entire albums as a `.zip` archive, respecting all permissions.
+
 ### Admin Dashboard & Audit
 *   **User Management**: Admin API to list users, ban users, and update roles.
 *   **Audit Logging**: Detailed DB logging of all critical admin actions (Bans, Role Updates) for accountability.
@@ -157,6 +168,21 @@ npm start
     { "email": "user@example.com", "password": "secure123" }
     ```
 *   **Login**: `POST /api/auth/login`
+*   **Google Auth**: `GET /api/auth/google` (Redirects to Google)
+*   **Forgot Password**: `POST /api/auth/forgot-password`
+    ```json
+    { "email": "user@example.com" }
+    ```
+*   **Reset Password**: `POST /api/auth/reset-password`
+    ```json
+    { "token": "...", "newPassword": "..." }
+    ```
+
+### Push Notifications
+*   **Subscribe**: `POST /api/push/subscribe`
+    ```json
+    { "endpoint": "...", "keys": { "p256dh": "...", "auth": "..." } }
+    ```
 
 ### Albums
 
@@ -205,6 +231,7 @@ npm start
 *   **Shared With Me**: `GET /api/albums/shared`
 *   **Get One**: `GET /api/albums/:id`
     *   *Returns*: Album details, Photos, and `sharedUsers` (if Owner).
+*   **Download Zip**: `GET /api/albums/:id/download`
 
 ---
 
