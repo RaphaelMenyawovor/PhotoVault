@@ -18,7 +18,7 @@ passport.use(new GoogleStrategy({
     try {
         const { id: googleId, displayName, photos, emails } = profile;
         const email = emails?.[0]?.value;
-        // Fix: Ensure avatar is string | null, not undefined
+        // Ensure avatar is string | null, not undefined
         const avatar = photos?.[0]?.value || null;
 
         if (!email) {
