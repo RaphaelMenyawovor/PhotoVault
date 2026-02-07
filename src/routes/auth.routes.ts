@@ -1,14 +1,16 @@
 import { Router } from 'express';
 import { register, login, forgotPassword, resetPassword, googleCallback } from '../controllers/auth.controller.js';
 import { validate } from '../middleware/validator.middleware.js';
-import { registerSchema, loginSchema } from '../schemas/auth.schema.js';
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '../schemas/auth.schema.js';
 import { authLimiter } from '../middleware/authLimiter.middleware.js';
 
 const router = Router();
 
 router.post('/register', validate(registerSchema), register);
 router.post('/login', authLimiter, validate(loginSchema), login);
-router.post('/forgot-password', authLimiter, forgotPassword);
+router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), forgotPassword);
+router.post('/reset-password', authLimiter, validate(resetPasswordSchema), resetPassword);
+
 // Google Auth Routes
 import passport from 'passport';
 
