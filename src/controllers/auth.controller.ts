@@ -138,7 +138,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<Respon
     }
 };
 
-export const googleCallback = async (req: Request, res: Response): Promise<Response> => {
+export const googleCallback = async (req: Request, res: Response): Promise<void | Response> => {
     try {
         // User is attached to req.user by passport
         const user = req.user as any;
@@ -154,17 +154,24 @@ export const googleCallback = async (req: Request, res: Response): Promise<Respo
             { expiresIn: '1d' }
         );
 
-        // Ideally redirect to frontend with token
-        // For API, we might return JSON or HTML with script to postMessage
-        // Assumption: Redirecting to frontend with token in query param
-        // const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        // return res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+        // Redirect to Frontend/Mobile App with token
+        // If FRONTEND_URL is "photovault://app", result is "photovault://app?token=xyz"
+        // If FRONTEND_URL is "https://website.com", result is "https://website.com?token=xyz"
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-        // For simple testing/API usage now:
-        return res.json({ message: 'Google Login Successful', token, user });
+        // Append token safely
+        const redirectUrl = new URL(frontendUrl);
+        redirectUrl.searchParams.set('token', token);
+        // Optionally pass user info if needed, but token usually has it
+        // redirectUrl.searchParams.set('role', user.role);
+
+        wideLogger.addCtx('auth_action', 'google_callback_redirect');
+        return res.redirect(redirectUrl.toString());
 
     } catch (error) {
         wideLogger.add('err', { msg: 'Google Callback Error', error: (error as Error).message });
-        return res.status(500).json({ error: 'Internal server error' });
+        // Redirect to frontend login with error
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        return res.redirect(`${frontendUrl}?error=auth_failed`);
     }
 };
