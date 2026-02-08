@@ -142,7 +142,8 @@ text-decoration: none
 <table class=t11 role=presentation cellpadding=0 cellspacing=0 style="Margin-left:auto;Margin-right:auto;"><tr><td width=400 class=t10 style="width:800px;">
 <table class=t9 role=presentation cellpadding=0 cellspacing=0 width=100% style="width:100%;"><tr><td class=t8 style="overflow:hidden;background-color:#5E5EFF;padding:26px 25px 26px 25px;border-radius:14px 14px 0 0;"><div class=t7 style="width:100%;text-align:center;"><div class=t6 style="display:inline-block;"><table class=t5 role=presentation cellpadding=0 cellspacing=0 align=center valign=top>
 <tr class=t4><td></td><td class=t3 width=55 valign=top>
-<table role=presentation width=100% cellpadding=0 cellspacing=0 class=t2 style="width:100%;"><tr><td class=t1><div style="font-size:0px;"><img class=t0 style="display:block;border:0;height:auto;width:100%;Margin:0;max-width:100%;" width=55 height=36 alt="" src="https://04599a11-8f08-4106-b856-30cbf10e9d86.b-cdn.net/e/e1e09c25-466a-4712-9425-51d830b929b8/3902fc90-60f4-41e3-8dbe-c354fa10e04a.png"/></div></td></tr></table>
+<!-- The next line has the logo link -->
+<table role=presentation width=100% cellpadding=0 cellspacing=0 class=t2 style="width:100%;"><tr><td class=t1><div style="font-size:0px;"><img class=t0 style="display:block;border:0;height:auto;width:100%;Margin:0;max-width:100%;" width=55 height=36 alt="Obscura Logo" src="https://04599a11-8f08-4106-b856-30cbf10e9d86.b-cdn.net/e/e1e09c25-466a-4712-9425-51d830b929b8/3902fc90-60f4-41e3-8dbe-c354fa10e04a.png"/></div></td></tr></table>
 </td>
 <td></td></tr>
 </table></div></div></td></tr></table>
