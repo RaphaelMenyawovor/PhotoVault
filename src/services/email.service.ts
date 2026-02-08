@@ -1,5 +1,9 @@
 import { Resend } from 'resend';
 import { wideLogger } from '../utils/wideLogger.js';
+import { resetPasswordTemplate } from '../templates/emails/passwordReset.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 class EmailService {
     private resend: Resend;
@@ -10,39 +14,33 @@ class EmailService {
         if (!apiKey) {
             console.warn('⚠️ RESEND_API_KEY is not set. Email styling will be skipped or fail.');
         }
-        this.resend = new Resend(apiKey || 're_123456789'); // Dummy key to prevent crash on init
-        // Use a verified domain or the testing domain provided by Resend
+        this.resend = new Resend(apiKey || 're_123456789');
         this.fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
     }
 
     async sendPasswordResetEmail(email: string, token: string) {
-        // Construct the reset link
-        // Assuming frontend URL or API direct link. For API testing, we send the token.
-        // In prod, this would be: ${process.env.FRONTEND_URL}/reset-password?token=${token}
-        const resetLink = `${process.env.APP_URL || 'http://localhost:3000'}/api/auth/reset-password?token=${token}`; // Using API endpoint pattern for simplicity in this backend-focused task, or could be a frontend link.
-        // User asked for "Password Reset Feature". Usually this implies a frontend. 
-        // But since this is a backend repo, I'll send the token clearly.
+        // Industry Standard: Send a link to the FRONTEND, which then calls the API
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
 
         try {
             const { data, error } = await this.resend.emails.send({
                 from: this.fromEmail,
-                to: email, // Free tier only sends to account owner unless domain verified
-                subject: 'Reset Your Password - PhotoVault',
-                html: `
-                    <h1>Password Reset Request</h1>
-                    <p>You requested a password reset. Use the token below to reset your password:</p>
-                    <p><strong>Token: ${token}</strong></p>
-                    <p>Or make a POST request to <code>/api/auth/reset-password</code> with this token.</p>
-                    <p><small>This token expires in 1 hour.</small></p>
-                `,
+                to: email,
+                subject: 'Reset Your PhotoVault Password',
+                html: resetPasswordTemplate(resetUrl, token),
+                text: `Reset your password by visiting: ${resetUrl}\n\nToken: ${token}`
             });
 
             if (error) {
+                // WideLogger handles the logging
                 wideLogger.add('err', { msg: 'Failed to send email via Resend', error });
                 return false;
             }
 
-            wideLogger.add('ctx', { msg: 'Password reset email sent', email, messageId: data?.id });
+            wideLogger.addCtx('action', 'email_send_password_reset');
+            wideLogger.addCtx('email', email);
+            wideLogger.addCtx('message_id', data?.id);
             return true;
         } catch (err) {
             wideLogger.add('err', { msg: 'Email sending exception', error: (err as Error).message });
