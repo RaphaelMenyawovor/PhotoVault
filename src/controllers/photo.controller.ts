@@ -89,6 +89,10 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
             await redisClient.incr('public_photos_version');
         }
 
+        wideLogger.addCtx('photo_id', photo.id);
+        if (albumId) wideLogger.addCtx('album_id', albumId);
+        wideLogger.addCtx('action', 'photo_upload');
+
         return res.status(201).json({
             ...photo,
             urls: getOptimizedUrls(photo.publicId, photo.url)
