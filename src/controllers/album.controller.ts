@@ -130,6 +130,8 @@ export const createAlbum = async (req: AuthRequest, res: Response): Promise<Resp
             },
         });
 
+        wideLogger.addCtx('album_id', album.id);
+        wideLogger.addCtx('action', 'album_create');
         return res.status(201).json(album);
     } catch (error) {
         wideLogger.add('err', { msg: 'Failed to create album', stack: (error as Error).stack });
@@ -192,6 +194,7 @@ export const getAlbum = async (req: AuthRequest, res: Response): Promise<Respons
             sharedUsers: isOwner ? album.sharedWith.map(s => s.user) : undefined
         };
 
+        wideLogger.addCtx('album_id', id);
         return res.json(data);
     } catch (error) {
         wideLogger.add('err', { msg: 'Failed to fetch album', stack: (error as Error).stack });
@@ -229,6 +232,9 @@ export const revokeAccess = async (req: AuthRequest, res: Response): Promise<Res
             }
         });
 
+        wideLogger.addCtx('album_id', id);
+        wideLogger.addCtx('revoked_email', email);
+        wideLogger.addCtx('action', 'album_revoke_access');
         return res.json({ message: 'Access revoked successfully' });
     } catch (error) {
         if ((error as unknown as { code?: string }).code === 'P2025') {
@@ -320,15 +326,25 @@ export const addPhotoToAlbum = async (req: AuthRequest, res: Response): Promise<
             data: { albumId },
         });
 
-        // Notify shared users
-        for (const share of album.sharedWith) {
+        // Notify shared users (Fire and forget, but handle promises)
+        const notificationPromises = album.sharedWith.map(share =>
             sendNotification(share.userId, {
                 title: 'New Photo Added',
                 body: `A new photo was added to album "${album.title}"`,
                 url: `/albums/${album.id}`
-            });
-        }
+            })
+        );
 
+        Promise.allSettled(notificationPromises).then(results => {
+            const rejected = results.filter(r => r.status === 'rejected');
+            if (rejected.length > 0) {
+                wideLogger.add('err', { msg: 'Some push notifications failed', count: rejected.length });
+            }
+        });
+
+        wideLogger.addCtx('album_id', albumId);
+        wideLogger.addCtx('photo_id', photoId);
+        wideLogger.addCtx('action', 'album_add_photo');
         return res.json(updatedPhoto);
     } catch (error) {
         wideLogger.add('err', { msg: 'Failed to add photo to album', stack: (error as Error).stack });
@@ -378,6 +394,10 @@ export const shareAlbum = async (req: AuthRequest, res: Response): Promise<Respo
             }
         });
 
+        wideLogger.addCtx('album_id', id);
+        wideLogger.addCtx('shared_email', email);
+        wideLogger.addCtx('shared_role', role || 'VIEWER');
+        wideLogger.addCtx('action', 'album_share');
         return res.json({ message: 'Album shared successfully' });
     } catch (error) {
         wideLogger.add('err', { msg: 'Failed to share album', stack: (error as Error).stack });
@@ -449,6 +469,9 @@ export const updateAlbumPrivacy = async (req: AuthRequest, res: Response): Promi
             data: { password: hashedPassword }
         });
 
+        wideLogger.addCtx('album_id', id);
+        wideLogger.addCtx('privacy_password_set', !!password);
+        wideLogger.addCtx('action', 'album_update_privacy');
         return res.json({ message: 'Album privacy updated' });
     } catch (error) {
         wideLogger.add('err', { msg: 'Failed to update privacy', stack: (error as Error).stack });
