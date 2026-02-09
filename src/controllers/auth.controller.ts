@@ -31,6 +31,8 @@ export const register = async (req: Request, res: Response): Promise<Response> =
             { expiresIn: '1h' }
         );
 
+        wideLogger.addCtx('user_id', user.id);
+        wideLogger.addCtx('action', 'user_register');
         return res.status(201).json({ message: 'User created', token, user: { id: user.id, email: user.email, role: user.role } });
     } catch (error) {
         wideLogger.add('err', { msg: 'Registration failed', stack: (error as Error).stack });
@@ -62,6 +64,8 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
             { expiresIn: '1h' }
         );
 
+        wideLogger.addCtx('user_id', user.id);
+        wideLogger.addCtx('action', 'user_login');
         return res.json({ message: 'Login successful', token, user: { id: user.id, email: user.email, role: user.role } });
     } catch (error) {
         return res.status(500).json({ error: 'Internal server error' });
@@ -92,6 +96,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<Respo
             return res.status(500).json({ error: 'Failed to send email' });
         }
 
+        wideLogger.addCtx('action', 'forgot_password_request');
         return res.json({ message: 'If that email exists, a password reset link has been sent.' });
     } catch (error) {
         wideLogger.add('err', { msg: 'Forgot password error', error: (error as Error).message });
@@ -131,6 +136,8 @@ export const resetPassword = async (req: Request, res: Response): Promise<Respon
             },
         });
 
+        wideLogger.addCtx('user_id', user.id);
+        wideLogger.addCtx('action', 'password_reset_success');
         return res.json({ message: 'Password has been reset successfully' });
     } catch (error) {
         wideLogger.add('err', { msg: 'Reset password error', error: (error as Error).message });
