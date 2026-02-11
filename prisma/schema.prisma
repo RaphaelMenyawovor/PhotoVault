@@ -63,6 +63,8 @@ model Photo {
   updatedAt   DateTime   @updatedAt
   tags        String[]
   deletedAt   DateTime?
+  takenAt     DateTime?
+  exifData    Json?
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   album Album? @relation(fields: [albumId], references: [id])

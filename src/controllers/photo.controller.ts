@@ -8,7 +8,7 @@ import type { UploadApiResponse } from 'cloudinary';
 import { Readable } from 'stream';
 import { wideLogger } from '../utils/wideLogger.js';
 
-import { getOptimizedUrls } from '../utils/image.utils.js';
+import { getOptimizedUrls, extractExifData } from '../utils/image.utils.js';
 
 export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
@@ -16,7 +16,7 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        const { title, description, visibility, albumId, tags } = req.body;
+        const { title, description, visibility, albumId, tags, takenAt } = req.body;
 
         // Verify Album Permissions if albumId is provided
         if (albumId) {
@@ -55,7 +55,8 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
                     {
                         folder: 'photovault',
                         categorization: 'aws_rek_tagging',
-                        auto_tagging: 0.6
+                        auto_tagging: 0.6,
+                        image_metadata: true
                     },
                     (error, result) => {
                         if (error) return reject(error);
@@ -72,6 +73,10 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
         const aiTags = result.tags || [];
         const finalTags = Array.from(new Set([...manualTags, ...aiTags]));
 
+        // Extract EXIF
+        const { takenAt: exifTakenAt, exifData } = extractExifData(result);
+        const finalTakenAt = takenAt ? new Date(takenAt) : exifTakenAt;
+
         const photo = await prisma.photo.create({
             data: {
                 title,
@@ -82,6 +87,8 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
                 userId: req.user!.id,
                 albumId: albumId || null,
                 tags: finalTags,
+                takenAt: finalTakenAt || null,
+                exifData: exifData ?? Prisma.JsonNull,
             },
         });
 
