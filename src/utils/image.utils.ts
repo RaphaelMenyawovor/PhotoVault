@@ -109,8 +109,22 @@ export const extractExifData = (cloudinaryResult: any): { takenAt?: Date, exifDa
         }
     }
 
-    return {
-        takenAt: takenAt ?? undefined,
-        exifData: Object.keys(exifData).length > 0 ? exifData : undefined
-    };
+    const result: { takenAt?: Date; exifData?: any } = {};
+    if (takenAt) result.takenAt = takenAt;
+    if (Object.keys(exifData).length > 0) result.exifData = exifData;
+
+    return result;
+};
+
+export const extractPublicIdFromUrl = (url: string): string | null => {
+    try {
+        if (!url.includes('cloudinary.com')) return null;
+
+        // Matches /upload/ optionally followed by v<numbers>/ then captures everything until the last dot
+        const regex = /\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/;
+        const match = url.match(regex);
+        return match && match[1] ? match[1] : null;
+    } catch (error) {
+        return null;
+    }
 };
