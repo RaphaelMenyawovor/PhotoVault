@@ -7,6 +7,7 @@ import photoRoutes from './routes/photo.routes.js';
 import albumRoutes from './routes/album.routes.js';
 import pushRoutes from './routes/push.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import userRoutes from './routes/user.routes.js';
 import { limiter } from './middleware/limiter.middleware.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { wideLoggerMiddleware } from './middleware/wideLogger.middleware.js';
@@ -34,6 +35,7 @@ app.use('/api/photos', photoRoutes);
 app.use('/api/albums', albumRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/user', userRoutes);
 
 app.get('/', (_req: Request, res: Response) => {
     res.send('Photo Vault API is running');
