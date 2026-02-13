@@ -66,6 +66,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@jest-mock/express": "^3.0.0",
     "@types/archiver": "^7.0.0",
     "@types/bcrypt": "^6.0.0",
     "@types/compression": "^1.8.1",
