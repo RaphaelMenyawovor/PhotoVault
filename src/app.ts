@@ -11,6 +11,7 @@ import userRoutes from './routes/user.routes.js';
 import { limiter } from './middleware/limiter.middleware.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { wideLoggerMiddleware } from './middleware/wideLogger.middleware.js';
+import cookieParser from 'cookie-parser';
 
 const app: Express = express();
 
@@ -25,7 +26,11 @@ app.use(wideLoggerMiddleware);
 app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(cookieParser());
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173', // Default to Vite default port
+    credentials: true
+}));
 app.use(helmet());
 
 app.use(limiter);

@@ -31,9 +31,16 @@ export const register = async (req: Request, res: Response): Promise<Response> =
             { expiresIn: '1h' }
         );
 
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production', // true in production
+            sameSite: 'strict',
+            maxAge: 3600000 // 1 hour
+        });
+
         wideLogger.addCtx('user_id', user.id);
         wideLogger.addCtx('action', 'user_register');
-        return res.status(201).json({ message: 'User created', token, user: { id: user.id, email: user.email, role: user.role } });
+        return res.status(201).json({ message: 'User created', user: { id: user.id, email: user.email, role: user.role } });
     } catch (error) {
         wideLogger.add('err', { msg: 'Registration failed', stack: (error as Error).stack });
         return res.status(500).json({ error: 'Internal server error' });
@@ -64,12 +71,29 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
             { expiresIn: '1h' }
         );
 
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 3600000 // 1 hour
+        });
+
         wideLogger.addCtx('user_id', user.id);
         wideLogger.addCtx('action', 'user_login');
-        return res.json({ message: 'Login successful', token, user: { id: user.id, email: user.email, role: user.role } });
+        return res.json({ message: 'Login successful', user: { id: user.id, email: user.email, role: user.role } });
     } catch (error) {
         return res.status(500).json({ error: 'Internal server error' });
     }
+};
+
+export const logout = async (_req: Request, res: Response): Promise<Response> => {
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+    });
+    wideLogger.addCtx('action', 'user_logout');
+    return res.json({ message: 'Logged out successfully' });
 };
 
 export const forgotPassword = async (req: Request, res: Response): Promise<Response> => {
@@ -161,19 +185,18 @@ export const googleCallback = async (req: Request, res: Response): Promise<void 
             { expiresIn: '1d' }
         );
 
-        // Redirect to Frontend/Mobile App with token
-        // If FRONTEND_URL is "photovault://app", result is "photovault://app?token=xyz"
-        // If FRONTEND_URL is "https://website.com", result is "https://website.com?token=xyz"
+        // Set Cookie
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 86400000 // 1 day
+        });
+
+        // Redirect to Frontend/Mobile App without token in URL
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-
-        // Append token safely
-        const redirectUrl = new URL(frontendUrl);
-        redirectUrl.searchParams.set('token', token);
-        // Optionally pass user info if needed, but token usually has it
-        // redirectUrl.searchParams.set('role', user.role);
-
         wideLogger.addCtx('auth_action', 'google_callback_redirect');
-        return res.redirect(redirectUrl.toString());
+        return res.redirect(frontendUrl); // Redirect to dashboard, cookie handles auth
 
     } catch (error) {
         wideLogger.add('err', { msg: 'Google Callback Error', error: (error as Error).message });

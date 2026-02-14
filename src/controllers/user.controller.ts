@@ -75,3 +75,31 @@ export const updateAvatar = async (req: AuthRequest, res: Response): Promise<Res
         return res.status(500).json({ error: 'Failed to update avatar' });
     }
 };
+
+export const getMe = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        const userId = req.user!.id; // Guaranteed by auth middleware
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                avatar: true,
+                createdAt: true,
+                googleId: true
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        wideLogger.addCtx('action', 'user_get_me');
+        return res.json(user);
+    } catch (error) {
+        wideLogger.add('err', { msg: 'Get Me Error', error: (error as Error).message });
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+};

@@ -8,7 +8,11 @@ export interface AuthRequest extends Request {
 
 export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    let token = authHeader && authHeader.split(' ')[1];
+
+    if (!token && req.cookies && req.cookies.token) {
+        token = req.cookies.token;
+    }
 
     if (!token) {
         wideLogger.add('err', { msg: 'No token provided' });

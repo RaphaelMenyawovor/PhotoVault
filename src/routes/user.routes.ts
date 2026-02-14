@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { updateAvatar } from '../controllers/user.controller.js';
+import { updateAvatar, getMe } from '../controllers/user.controller.js';
 import { verifyToken } from '../middleware/auth.middleware.js';
 import multer from 'multer';
 
@@ -14,6 +14,7 @@ const upload = multer({
 // Protect all user routes
 router.use(verifyToken);
 
+router.get('/me', getMe);
 router.put('/avatar', upload.single('avatar'), updateAvatar);
 
 export default router;
