@@ -39,7 +39,9 @@ describe('Shared Album Roles Integration', () => {
             }
 
             if (!tokenCookie) throw new Error('Token cookie not found');
-            const tokenParts = tokenCookie.split(';')[0].split('=');
+            const firstPart = tokenCookie.split(';')[0];
+            if (!firstPart) throw new Error('Token cookie format invalid');
+            const tokenParts = firstPart.split('=');
             if (tokenParts.length < 2 || !tokenParts[1]) throw new Error('Token format invalid');
             return tokenParts[1];
         };
