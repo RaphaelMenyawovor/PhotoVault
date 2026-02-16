@@ -40,19 +40,28 @@ describe('Push Notifications', () => {
             await prisma.user.deleteMany({ where: { email: { in: [testEmail, sharedEmail] } } });
         } catch (_) { }
 
-        // 1. Create Owner User
-        await request(app).post('/api/auth/register').send({ email: testEmail, password: 'password123' });
-        const login = await request(app).post('/api/auth/login').send({ email: testEmail, password: 'password123' });
-        token = login.body.token;
+        const getAuthToken = async (email: string) => {
+            await request(app).post('/api/auth/register').send({ email, password: 'password123' });
+            const login = await request(app).post('/api/auth/login').send({ email, password: 'password123' });
 
+            const cookies = login.headers['set-cookie'];
+            let tokenCookie: string | undefined;
+            if (Array.isArray(cookies)) {
+                tokenCookie = cookies.find((c: string) => c.startsWith('token='));
+            } else if (typeof cookies === 'string' && cookies.startsWith('token=')) {
+                tokenCookie = cookies;
+            }
+            if (!tokenCookie) throw new Error('Token cookie not found');
+            return tokenCookie.split(';')[0].split('=')[1];
+        };
+
+        // 1. Create Owner User
+        token = await getAuthToken(testEmail);
         const user = await prisma.user.findUnique({ where: { email: testEmail } });
         userId = user!.id;
 
         // 2. Create Shared User
-        await request(app).post('/api/auth/register').send({ email: sharedEmail, password: 'password123' });
-        const sharedLogin = await request(app).post('/api/auth/login').send({ email: sharedEmail, password: 'password123' });
-        sharedToken = sharedLogin.body.token;
-
+        sharedToken = await getAuthToken(sharedEmail);
         const sharedUser = await prisma.user.findUnique({ where: { email: sharedEmail } });
         sharedUserId = sharedUser!.id;
 
@@ -67,7 +76,7 @@ describe('Push Notifications', () => {
         const shareRes = await request(app)
             .post(`/api/albums/${albumId}/share`)
             .set('Authorization', `Bearer ${token}`)
-            .send({ email: sharedEmail, role: 'EDITOR' });
+            .send({ email: sharedEmail, role: 'CONTRIBUTOR' });
 
         if (shareRes.status !== 200) {
             console.error('Share failed:', shareRes.body);
@@ -134,7 +143,7 @@ describe('Push Notifications', () => {
         */
     });
 
-    it('should allow shared user (EDITOR) to add photo to album', async () => {
+    it('should allow shared user (CONTRIBUTOR) to add photo to album', async () => {
         // Create a photo for shared user
         const photo = await prisma.photo.create({
             data: {

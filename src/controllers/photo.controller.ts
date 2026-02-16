@@ -34,9 +34,9 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
             }
 
             const isOwner = album.userId === req.user!.id;
-            const isEditor = album.sharedWith[0]?.role === 'EDITOR';
+            const isContributor = album.sharedWith[0]?.role === 'CONTRIBUTOR';
 
-            if (!isOwner && !isEditor) {
+            if (!isOwner && !isContributor) {
                 return res.status(403).json({ error: 'You do not have permission to add photos to this album' });
             }
         }

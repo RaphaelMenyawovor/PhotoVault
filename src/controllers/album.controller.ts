@@ -191,6 +191,7 @@ export const getAlbum = async (req: AuthRequest, res: Response): Promise<Respons
                 urls: getOptimizedUrls(photo.publicId, photo.url)
             })),
             isOwner,
+            currentUserRole: isOwner ? 'OWNER' : album.sharedWith.find(s => s.userId === req.user!.id)?.role || null,
             sharedUsers: isOwner ? album.sharedWith.map(s => s.user) : undefined
         };
 
@@ -309,11 +310,11 @@ export const addPhotoToAlbum = async (req: AuthRequest, res: Response): Promise<
         }
 
         const isOwner = album.userId === req.user!.id;
-        const isEditor = album.sharedWith.some(
-            (share) => share.userId === req.user!.id && share.role === 'EDITOR'
+        const isContributor = album.sharedWith.some(
+            (share) => share.userId === req.user!.id && share.role === 'CONTRIBUTOR'
         );
 
-        if (!isOwner && !isEditor) {
+        if (!isOwner && !isContributor) {
             return res.status(403).json({ error: 'Forbidden' });
         }
 
