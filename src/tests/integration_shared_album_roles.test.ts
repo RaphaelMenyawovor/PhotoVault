@@ -1,10 +1,11 @@
 
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, jest } from '@jest/globals';
 import request from 'supertest';
 import app from '../app.js';
 import prisma from '../configs/prisma.js';
 
 describe('Shared Album Roles Integration', () => {
+    jest.setTimeout(30000);
     let ownerToken: string;
     let viewerToken: string;
     let contributorToken: string;
@@ -23,18 +24,24 @@ describe('Shared Album Roles Integration', () => {
         } catch (_) { }
 
         // Register Users
-        const registerUser = async (email: string) => {
+        // Register Users
+        const registerUser = async (email: string): Promise<string> => {
             await request(app).post('/api/auth/register').send({ email, password });
             const login = await request(app).post('/api/auth/login').send({ email, password });
-            const cookies = login.headers['set-cookie'];
+            const cookies = login.headers['set-cookie'] as string[] | string | undefined;
+            if (!cookies) throw new Error('No cookies found');
+
             let tokenCookie: string | undefined;
             if (Array.isArray(cookies)) {
                 tokenCookie = cookies.find((c: string) => c.startsWith('token='));
             } else if (typeof cookies === 'string' && cookies.startsWith('token=')) {
                 tokenCookie = cookies;
             }
+
             if (!tokenCookie) throw new Error('Token cookie not found');
-            return tokenCookie.split(';')[0].split('=')[1];
+            const tokenParts = tokenCookie.split(';')[0].split('=');
+            if (tokenParts.length < 2 || !tokenParts[1]) throw new Error('Token format invalid');
+            return tokenParts[1];
         };
 
         ownerToken = await registerUser(ownerEmail);

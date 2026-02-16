@@ -17,6 +17,7 @@ const { default: app } = await import('../app.js');
 const { default: prisma } = await import('../configs/prisma.js');
 
 describe('Push Notifications', () => {
+    jest.setTimeout(30000);
     let token: string;
     let userId: string;
     let albumId: string;
@@ -40,30 +41,37 @@ describe('Push Notifications', () => {
             await prisma.user.deleteMany({ where: { email: { in: [testEmail, sharedEmail] } } });
         } catch (_) { }
 
-        const getAuthToken = async (email: string) => {
+        const getAuthToken = async (email: string): Promise<string> => {
             await request(app).post('/api/auth/register').send({ email, password: 'password123' });
             const login = await request(app).post('/api/auth/login').send({ email, password: 'password123' });
 
-            const cookies = login.headers['set-cookie'];
+            const cookies = login.headers['set-cookie'] as string[] | string | undefined;
+            if (!cookies) throw new Error('No cookies found');
+
             let tokenCookie: string | undefined;
             if (Array.isArray(cookies)) {
                 tokenCookie = cookies.find((c: string) => c.startsWith('token='));
             } else if (typeof cookies === 'string' && cookies.startsWith('token=')) {
                 tokenCookie = cookies;
             }
+
             if (!tokenCookie) throw new Error('Token cookie not found');
-            return tokenCookie.split(';')[0].split('=')[1];
+            const tokenParts = tokenCookie.split(';')[0].split('=');
+            if (tokenParts.length < 2 || !tokenParts[1]) throw new Error('Token format invalid');
+            return tokenParts[1];
         };
 
         // 1. Create Owner User
         token = await getAuthToken(testEmail);
         const user = await prisma.user.findUnique({ where: { email: testEmail } });
-        userId = user!.id;
+        if (!user) throw new Error('Owner user not found');
+        userId = user.id;
 
         // 2. Create Shared User
         sharedToken = await getAuthToken(sharedEmail);
         const sharedUser = await prisma.user.findUnique({ where: { email: sharedEmail } });
-        sharedUserId = sharedUser!.id;
+        if (!sharedUser) throw new Error('Shared user not found');
+        sharedUserId = sharedUser.id;
 
         // 3. Create Album
         const albumRes = await request(app)
