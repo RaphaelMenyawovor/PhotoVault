@@ -17,10 +17,18 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "var jsonData = pm.response.json();",
-                  "if (jsonData.token) {",
-                  "    pm.collectionVariables.set(\"token\", jsonData.token);",
-                  "}"
+                  "// Extract token from Cookie",
+                  "var token = pm.cookies.get('token');",
+                  "if (token) {",
+                  "    pm.collectionVariables.set(\"token\", token);",
+                  "}",
+                  "// Fallback to JSON body (legacy)",
+                  "try {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.token) {",
+                  "        pm.collectionVariables.set(\"token\", jsonData.token);",
+                  "    }",
+                  "} catch (e) {}"
                 ],
                 "type": "text/javascript",
                 "packages": {}
@@ -63,10 +71,18 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "var jsonData = pm.response.json();",
-                  "if (jsonData.token) {",
-                  "    pm.collectionVariables.set(\"token\", jsonData.token);",
-                  "}"
+                  "// Extract token from Cookie",
+                  "var token = pm.cookies.get('token');",
+                  "if (token) {",
+                  "    pm.collectionVariables.set(\"token\", token);",
+                  "}",
+                  "// Fallback to JSON body (legacy)",
+                  "try {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.token) {",
+                  "        pm.collectionVariables.set(\"token\", jsonData.token);",
+                  "    }",
+                  "} catch (e) {}"
                 ],
                 "type": "text/javascript",
                 "packages": {}
@@ -657,7 +673,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"email\": \"target-user@example.com\",\n    \"role\": \"EDITOR\"\n}",
+              "raw": "{\n    \"email\": \"target-user@example.com\",\n    \"role\": \"CONTRIBUTOR\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

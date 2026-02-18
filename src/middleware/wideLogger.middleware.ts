@@ -17,7 +17,7 @@ export const wideLoggerMiddleware = (req: Request, res: Response, next: NextFunc
         },
         http: {
             method: req.method,
-            route: req.path, // Will be updated to route pattern if available
+            route: 'UNKNOWN_ROUTE', // Default to generic to avoid high cardinality on 404s
             path: req.path,
             user_agent: req.headers['user-agent'] || '',
             ip: req.ip || '',

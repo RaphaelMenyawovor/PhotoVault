@@ -14,11 +14,15 @@ A secure, high-performance RESTful API for storing, managing, and sharing person
 *   **Smart Tags**: AI-powered auto-tagging (via Cloudinary) for improved searchability. Manual tags also supported.
 
 ### Advanced Sharing & Privacy
-*   **Collaborative Albums**: Share albums with `EDITOR` role to allow others to upload photos. Default role is `VIEWER`.
+*   **Collaborative Albums**: Share albums with `EDITOR` or `CONTRIBUTOR` role to allow others to upload photos. Default role is `VIEWER`.
 *   **Album Sharing**: Grant read/write access to specific users via email.
 *   **Privacy Controls**: Password-protect sensitive albums (hashed with bcrypt).
 *   **Granular Access**: Owners can view access lists (`sharedUsers`) and revoke permissions.
+    *   **VIEWER**: Read-only access.
+    *   **CONTRIBUTOR**: Can view and add photos.
+    *   **OWNER**: Full control.
 *   **Secure Access Logic**: Access is granted if:
+    1.  User is the **Owner**.
     2.  User is in the **Shared List**.
     3.  User provides the correct **Password** (via `X-Album-Password` header).
     4.  User accesses via a valid **Magic Link** token.
@@ -41,6 +45,7 @@ A secure, high-performance RESTful API for storing, managing, and sharing person
 ### Enhanced Authentication
 *   **Google OAuth**: Login and Signup using Google Accounts.
 *   **Password Reset**: Secure forgot-password flow with email delivery (via Resend) and hashed tokens.
+*   **HttpOnly Cookies**: JWT tokens are stored in secure, HttpOnly cookies to prevent XSS attacks.
 
 ### Push Notifications
 *   **Real-time Alerts**: Subscribe to push notifications for album updates (e.g., new photos in shared albums).
@@ -54,7 +59,10 @@ A secure, high-performance RESTful API for storing, managing, and sharing person
 *   **Audit Logging**: Detailed DB logging of all critical admin actions (Bans, Role Updates) for accountability.
 *   **User Stats**: View storage usage (photo/album counts) per user.
 
-### Observability & Performance
+### Security & Observability
+*   **Security Headers**: Implements `helmet` for strict HTTP headers (HSTS, No-Sniff, etc.).
+*   **Rate Limiting**: Protects authentication endpoints against brute-force attacks.
+*   **Input Validation**: Strict Zod schemas for all incoming requests.
 *   **Wide Event Logging**: Implements "One Request, One Log" philosophy using `AsyncLocalStorage` to capture high-cardinality context (Trace ID, User ID, HTTP details) in a single JSON blob per request.
 *   **Caching**: Redis caching strategy for high-traffic endpoints.
 
