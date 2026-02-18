@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { register, login, logout, forgotPassword, resetPassword, googleCallback } from '../controllers/auth.controller.js';
 import { validate } from '../middleware/validator.middleware.js';
 import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '../schemas/auth.schema.js';
-import { authLimiter } from '../middleware/authLimiter.middleware.js';
+import { authLimiter } from '../middleware/limiter.middleware.js';
 
 const router = Router();
 

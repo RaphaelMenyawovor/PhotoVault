@@ -31,7 +31,21 @@ app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173', // Default to Vite default port
     credentials: true
 }));
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: [],
+        },
+    },
+    hsts: {
+        maxAge: 31536000, // 1 year
+        includeSubDomains: true,
+        preload: true,
+    },
+}));
 
 app.use(limiter);
 

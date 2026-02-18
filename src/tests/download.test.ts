@@ -45,7 +45,18 @@ describe('Bulk Download (.zip)', () => {
             email: testEmail,
             password: 'password123'
         });
-        token = loginRes.body.token;
+        const cookies = loginRes.headers['set-cookie'] as string[] | string | undefined;
+        let tokenCookie: string | undefined;
+        if (Array.isArray(cookies)) {
+            tokenCookie = cookies?.find((c: string) => c.startsWith('token='));
+        } else if (typeof cookies === 'string' && cookies.startsWith('token=')) {
+            tokenCookie = cookies;
+        }
+        if (!tokenCookie) throw new Error('Token cookie not found');
+        const firstPart = tokenCookie.split(';')[0];
+        const tokenParts = firstPart ? firstPart.split('=') : [];
+        if (tokenParts.length < 2 || !tokenParts[1]) throw new Error('Token format invalid');
+        token = tokenParts[1];
 
         // Create Album
         const albumRes = await request(app)
@@ -99,7 +110,18 @@ describe('Bulk Download (.zip)', () => {
         const otherEmail = `other_${Date.now()}_${Math.random()}@example.com`;
         await request(app).post('/api/auth/register').send({ email: otherEmail, password: 'password123' });
         const loginRes = await request(app).post('/api/auth/login').send({ email: otherEmail, password: 'password123' });
-        const otherToken = loginRes.body.token;
+        const cookies = loginRes.headers['set-cookie'] as string[] | string | undefined;
+        let tokenCookie: string | undefined;
+        if (Array.isArray(cookies)) {
+            tokenCookie = cookies?.find((c: string) => c.startsWith('token='));
+        } else if (typeof cookies === 'string' && cookies.startsWith('token=')) {
+            tokenCookie = cookies;
+        }
+        if (!tokenCookie) throw new Error('Token cookie not found');
+        const firstPart = tokenCookie.split(';')[0];
+        const tokenParts = firstPart ? firstPart.split('=') : [];
+        if (tokenParts.length < 2 || !tokenParts[1]) throw new Error('Token format invalid');
+        const otherToken = tokenParts[1];
 
         const res = await request(app)
             .get(`/api/albums/${albumId}/download`)

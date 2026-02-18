@@ -24,11 +24,26 @@ describe('Magic Link Flow', () => {
         });
 
         // Login to get token
+        // Login to get token
         const loginRes = await request(app).post('/api/auth/login').send({
             email: testEmail,
             password: 'password123'
         });
-        token = loginRes.body.token;
+
+        const cookies = loginRes.headers['set-cookie'] as string[] | string | undefined;
+        if (!cookies) throw new Error('No cookies found');
+        let tokenCookie: string | undefined;
+        if (Array.isArray(cookies)) {
+            tokenCookie = cookies.find((c: string) => c.startsWith('token='));
+        } else if (typeof cookies === 'string' && cookies.startsWith('token=')) {
+            tokenCookie = cookies;
+        }
+        if (!tokenCookie) throw new Error('Token cookie not found');
+        const firstPart = tokenCookie.split(';')[0];
+        if (!firstPart) throw new Error('Token cookie format invalid');
+        const tokenParts = firstPart.split('=');
+        if (tokenParts.length < 2 || !tokenParts[1]) throw new Error('Token format invalid');
+        token = tokenParts[1];
     });
 
     afterAll(async () => {
