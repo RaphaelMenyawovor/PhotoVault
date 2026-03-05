@@ -3,8 +3,9 @@ import request from 'supertest';
 import { emailService } from '../services/email.service.js';
 
 // Mock auth limiter to bypass 429
-jest.mock('../middleware/authLimiter.middleware.js', () => ({
+jest.mock('../middleware/limiter.middleware.js', () => ({
     authLimiter: (_req: any, _res: any, next: any) => next(),
+    limiter: (_req: any, _res: any, next: any) => next(),
 }));
 
 // We need to import app AFTER mocking the middleware if possible, 

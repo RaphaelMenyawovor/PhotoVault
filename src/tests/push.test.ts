@@ -11,6 +11,12 @@ jest.unstable_mockModule('../configs/webpush.js', () => ({
     }
 }));
 
+// Mock auth limiter to bypass 429
+jest.unstable_mockModule('../middleware/limiter.middleware.js', () => ({
+    authLimiter: (_req: any, _res: any, next: any) => next(),
+    limiter: (_req: any, _res: any, next: any) => next(),
+}));
+
 // Dynamic imports
 const request = (await import('supertest')).default;
 const { default: app } = await import('../app.js');

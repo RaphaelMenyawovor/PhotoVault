@@ -226,7 +226,7 @@ export const deletePhoto = async (req: AuthRequest, res: Response): Promise<Resp
 
         const photo = await prisma.photo.findUnique({
             where: { id: id as string },
-            include: { album: true }
+            include: { album: { select: { userId: true } } }
         });
 
         if (!photo) {

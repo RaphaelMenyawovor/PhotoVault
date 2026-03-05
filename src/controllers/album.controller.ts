@@ -143,11 +143,22 @@ export const getAlbum = async (req: AuthRequest, res: Response): Promise<Respons
     try {
         const { id } = req.params;
         const passwordHeader = req.headers['x-album-password'] as string | undefined;
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 50;
+        const skip = (page - 1) * limit;
 
         const album = await prisma.album.findUnique({
             where: { id: id as string },
             include: {
-                photos: true,
+                _count: {
+                    select: { photos: { where: { deletedAt: null } } }
+                },
+                photos: {
+                    where: { deletedAt: null },
+                    take: limit,
+                    skip: skip,
+                    orderBy: { createdAt: 'desc' },
+                },
                 sharedWith: {
                     include: {
                         user: {
@@ -184,6 +195,8 @@ export const getAlbum = async (req: AuthRequest, res: Response): Promise<Respons
             }
         }
 
+        const totalPhotos = album._count?.photos || 0;
+
         const data = {
             ...album,
             photos: album.photos.map(photo => ({
@@ -196,7 +209,15 @@ export const getAlbum = async (req: AuthRequest, res: Response): Promise<Respons
         };
 
         wideLogger.addCtx('album_id', id);
-        return res.json(data);
+        return res.json({
+            data,
+            meta: {
+                total: totalPhotos,
+                page,
+                limit,
+                totalPages: Math.ceil(totalPhotos / limit)
+            }
+        });
     } catch (error) {
         wideLogger.add('err', { msg: 'Failed to fetch album', stack: (error as Error).stack });
         return res.status(500).json({ error: 'Failed to fetch album' });
@@ -208,7 +229,10 @@ export const revokeAccess = async (req: AuthRequest, res: Response): Promise<Res
         const { id } = req.params;
         const { email } = req.body;
 
-        const album = await prisma.album.findUnique({ where: { id: id as string } });
+        const album = await prisma.album.findUnique({
+            where: { id: id as string },
+            select: { id: true, userId: true, deletedAt: true }
+        });
 
         if (!album || album.deletedAt) {
             return res.status(404).json({ error: 'Album not found' });
@@ -218,7 +242,10 @@ export const revokeAccess = async (req: AuthRequest, res: Response): Promise<Res
             return res.status(403).json({ error: 'Forbidden' });
         }
 
-        const userRevoke = await prisma.user.findUnique({ where: { email } });
+        const userRevoke = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true }
+        });
 
         if (!userRevoke) {
             return res.status(404).json({ error: 'User not found' });
@@ -358,7 +385,10 @@ export const shareAlbum = async (req: AuthRequest, res: Response): Promise<Respo
         const { id } = req.params;
         const { email, role } = req.body;
 
-        const album = await prisma.album.findUnique({ where: { id: id as string } });
+        const album = await prisma.album.findUnique({
+            where: { id: id as string },
+            select: { id: true, userId: true, deletedAt: true }
+        });
 
         if (!album || album.deletedAt) {
             return res.status(404).json({ error: 'Album not found' });
@@ -368,7 +398,10 @@ export const shareAlbum = async (req: AuthRequest, res: Response): Promise<Respo
             return res.status(403).json({ error: 'Forbidden' });
         }
 
-        const userToShare = await prisma.user.findUnique({ where: { email } });
+        const userToShare = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true }
+        });
 
         if (!userToShare) {
             return res.status(404).json({ error: 'User not found' });
@@ -450,7 +483,10 @@ export const updateAlbumPrivacy = async (req: AuthRequest, res: Response): Promi
         const { id } = req.params;
         const { password } = req.body;
 
-        const album = await prisma.album.findUnique({ where: { id: id as string } });
+        const album = await prisma.album.findUnique({
+            where: { id: id as string },
+            select: { id: true, userId: true, deletedAt: true }
+        });
 
         if (!album || album.deletedAt) {
             return res.status(404).json({ error: 'Album not found' });
@@ -485,7 +521,10 @@ export const generateMagicLink = async (req: AuthRequest, res: Response): Promis
         const { id } = req.params;
         const { expiresInDays = 7 } = req.body;
 
-        const album = await prisma.album.findUnique({ where: { id: id as string } });
+        const album = await prisma.album.findUnique({
+            where: { id: id as string },
+            select: { id: true, userId: true, deletedAt: true }
+        });
 
         if (!album || album.deletedAt) {
             return res.status(404).json({ error: 'Album not found' });
@@ -529,7 +568,10 @@ export const revokeMagicLink = async (req: AuthRequest, res: Response): Promise<
     try {
         const { id } = req.params;
 
-        const album = await prisma.album.findUnique({ where: { id: id as string } });
+        const album = await prisma.album.findUnique({
+            where: { id: id as string },
+            select: { id: true, userId: true, deletedAt: true }
+        });
 
         if (!album || album.deletedAt) {
             return res.status(404).json({ error: 'Album not found' });
@@ -563,6 +605,9 @@ export const revokeMagicLink = async (req: AuthRequest, res: Response): Promise<
 export const getAlbumByMagicLink = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { token } = req.params;
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 50;
+        const skip = (page - 1) * limit;
 
         if (!token) {
             return res.status(400).json({ error: 'Token is required' });
@@ -571,7 +616,15 @@ export const getAlbumByMagicLink = async (req: Request, res: Response): Promise<
         const album = await prisma.album.findUnique({
             where: { magicLinkToken: token as string },
             include: {
-                photos: true,
+                _count: {
+                    select: { photos: { where: { deletedAt: null } } }
+                },
+                photos: {
+                    where: { deletedAt: null },
+                    take: limit,
+                    skip: skip,
+                    orderBy: { createdAt: 'desc' }
+                },
                 user: {
                     select: {
                         id: true,
@@ -590,6 +643,8 @@ export const getAlbumByMagicLink = async (req: Request, res: Response): Promise<
             return res.status(410).json({ error: 'Magic link has expired' });
         }
 
+        const totalPhotos = album._count?.photos || 0;
+
         const data = {
             ...album,
             photos: album.photos.map(photo => ({
@@ -602,7 +657,15 @@ export const getAlbumByMagicLink = async (req: Request, res: Response): Promise<
             magicLinkExpiresAt: album.magicLinkExpiresAt
         };
 
-        return res.json({ data });
+        return res.json({
+            data,
+            meta: {
+                total: totalPhotos,
+                page,
+                limit,
+                totalPages: Math.ceil(totalPhotos / limit)
+            }
+        });
 
     } catch (error) {
         wideLogger.add('err', { msg: 'Failed to access album via magic link', stack: (error as Error).stack });
@@ -614,7 +677,10 @@ export const deleteAlbum = async (req: AuthRequest, res: Response): Promise<Resp
     try {
         const { id } = req.params;
 
-        const album = await prisma.album.findUnique({ where: { id: id as string } });
+        const album = await prisma.album.findUnique({
+            where: { id: id as string },
+            select: { id: true, userId: true, deletedAt: true }
+        });
 
         if (!album || album.deletedAt) {
             return res.status(404).json({ error: 'Album not found' });
@@ -674,7 +740,8 @@ export const restoreAlbum = async (req: AuthRequest, res: Response): Promise<Res
         const { id } = req.params;
 
         const album = await prisma.album.findUnique({
-            where: { id: id as string }
+            where: { id: id as string },
+            select: { id: true, userId: true, deletedAt: true }
         });
 
         if (!album) {
