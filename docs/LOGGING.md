@@ -36,7 +36,7 @@ We use Node.js's native `AsyncLocalStorage` to maintain request-scoped state wit
 
 ### How to Log
 
-You do **not** use `console.log`. Instead, import `wideLogger` and add context to the current request.
+You do **not** use `console.log`. Instead, import `wideLogger` from ./utils/wideLogger and add context to the current request.
 
 #### Basic Usage (Adding Business Context)
 Use `addCtx` to add key-value pairs to the `ctx` object. This is for high-cardinality data specific to your business logic.
@@ -111,3 +111,5 @@ This JSON format is automatically parsed by tools like:
 
 ### What if I need to log outside a request?
 If you are in a background job or startup script (no request context), `wideLogger` checks for the store. If none exists, it falls back to a safe no-op or direct console output (depending on implementation), so your code won't crash.
+
+
