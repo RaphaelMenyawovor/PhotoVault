@@ -95,6 +95,13 @@ export const uploadPhoto = async (req: AuthRequest, res: Response): Promise<Resp
         if (photo.visibility === 'PUBLIC') {
             await redisClient.incr('public_photos_version');
         }
+        
+        if (redisClient.isOpen) {
+            await redisClient.incr(`user_photos_version:${photo.userId}`);
+            if (albumId) {
+                await redisClient.incr(`album_version:${albumId}`);
+            }
+        }
 
         wideLogger.addCtx('photo_id', photo.id);
         if (albumId) wideLogger.addCtx('album_id', albumId);
@@ -176,8 +183,23 @@ export const getMyPhotos = async (req: AuthRequest, res: Response): Promise<Resp
         const limit = parseInt(req.query.limit as string) || 20;
         const search = req.query.search as string || '';
         const skip = (page - 1) * limit;
+        const userId = req.user!.id;
 
-        const whereClause: Prisma.PhotoWhereInput = { userId: req.user!.id, deletedAt: null };
+        let version = '1';
+        let cached = null;
+        let cacheKey = '';
+        
+        if (redisClient.isOpen) {
+            version = (await redisClient.get(`user_photos_version:${userId}`)) || '1';
+            cacheKey = `my_photos:${userId}:v${version}:p${page}:l${limit}:s${search}`;
+            cached = await redisClient.get(cacheKey);
+        }
+
+        if (cached) {
+            return res.json(JSON.parse(cached));
+        }
+
+        const whereClause: Prisma.PhotoWhereInput = { userId, deletedAt: null };
         if (search) {
             whereClause.OR = [
                 { title: { contains: search, mode: 'insensitive' } },
@@ -201,7 +223,7 @@ export const getMyPhotos = async (req: AuthRequest, res: Response): Promise<Resp
             urls: getOptimizedUrls(photo.publicId, photo.url)
         }));
 
-        return res.json({
+        const response = {
             data,
             meta: {
                 total,
@@ -209,7 +231,14 @@ export const getMyPhotos = async (req: AuthRequest, res: Response): Promise<Resp
                 limit,
                 totalPages: Math.ceil(total / limit),
             },
-        });
+        };
+
+        // Cache for 1 hour
+        if (redisClient.isOpen) {
+            await redisClient.setEx(cacheKey, 3600, JSON.stringify(response));
+        }
+
+        return res.json(response);
     } catch (error) {
         wideLogger.add('err', { msg: 'Failed to fetch photos', stack: (error as Error).stack });
         return res.status(500).json({ error: 'Failed to fetch photos' });
@@ -247,8 +276,14 @@ export const deletePhoto = async (req: AuthRequest, res: Response): Promise<Resp
             data: { deletedAt: new Date() }
         });
 
-        if (photo.visibility === 'PUBLIC' && redisClient.isOpen) {
-            await redisClient.incr('public_photos_version');
+        if (redisClient.isOpen) {
+            if (photo.visibility === 'PUBLIC') {
+                await redisClient.incr('public_photos_version');
+            }
+            await redisClient.incr(`user_photos_version:${photo.userId}`);
+            if (photo.albumId) {
+                await redisClient.incr(`album_version:${photo.albumId}`);
+            }
         }
 
         wideLogger.addCtx('photo_id', id);
@@ -307,8 +342,14 @@ export const restorePhoto = async (req: AuthRequest, res: Response): Promise<Res
             data: { deletedAt: null }
         });
 
-        if (restored.visibility === 'PUBLIC' && redisClient.isOpen) {
-            await redisClient.incr('public_photos_version');
+        if (redisClient.isOpen) {
+            if (restored.visibility === 'PUBLIC') {
+                await redisClient.incr('public_photos_version');
+            }
+            await redisClient.incr(`user_photos_version:${restored.userId}`);
+            if (restored.albumId) {
+                await redisClient.incr(`album_version:${restored.albumId}`);
+            }
         }
 
         wideLogger.addCtx('photo_id', id);
@@ -340,6 +381,16 @@ export const hardDeletePhoto = async (req: AuthRequest, res: Response): Promise<
 
         await cloudinary.uploader.destroy(photo.publicId);
         await prisma.photo.delete({ where: { id: id as string } });
+
+        if (redisClient.isOpen) {
+            if (photo.visibility === 'PUBLIC') {
+                await redisClient.incr('public_photos_version');
+            }
+            await redisClient.incr(`user_photos_version:${photo.userId}`);
+            if (photo.albumId) {
+                await redisClient.incr(`album_version:${photo.albumId}`);
+            }
+        }
 
         wideLogger.addCtx('photo_id', id);
         wideLogger.addCtx('action', 'photo_hard_delete');

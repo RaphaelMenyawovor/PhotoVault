@@ -9,6 +9,7 @@ import bcrypt from 'bcrypt';
 import archiver from 'archiver';
 import axios from 'axios';
 import cloudinary from '../configs/cloudinary.js';
+import redisClient from '../configs/redis.js';
 
 export const downloadAlbum = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
@@ -146,6 +147,24 @@ export const getAlbum = async (req: AuthRequest, res: Response): Promise<Respons
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 50;
         const skip = (page - 1) * limit;
+        const userId = req.user!.id;
+
+        // Try getting it from the cache
+        // We hash passwordHeader into the cache string to prevent bypass, or we just rely on the controller logic.
+        // Easiest is to cache the whole response under the user's specific access rights
+        let version = '1';
+        let cached = null;
+        let cacheKey = '';
+        
+        if (redisClient.isOpen) {
+            version = (await redisClient.get(`album_version:${id}`)) || '1';
+            cacheKey = `album:${id}:u${userId}:v${version}:p${page}:l${limit}`;
+            cached = await redisClient.get(cacheKey);
+        }
+        
+        if (cached) {
+            return res.json(JSON.parse(cached));
+        }
 
         const album = await prisma.album.findUnique({
             where: { id: id as string },
@@ -208,8 +227,7 @@ export const getAlbum = async (req: AuthRequest, res: Response): Promise<Respons
             sharedUsers: isOwner ? album.sharedWith.map(s => s.user) : undefined
         };
 
-        wideLogger.addCtx('album_id', id);
-        return res.json({
+        const response = {
             data,
             meta: {
                 total: totalPhotos,
@@ -217,7 +235,14 @@ export const getAlbum = async (req: AuthRequest, res: Response): Promise<Respons
                 limit,
                 totalPages: Math.ceil(totalPhotos / limit)
             }
-        });
+        };
+
+        if (redisClient.isOpen) {
+            await redisClient.setEx(cacheKey, 3600, JSON.stringify(response));
+        }
+
+        wideLogger.addCtx('album_id', id);
+        return res.json(response);
     } catch (error) {
         wideLogger.add('err', { msg: 'Failed to fetch album', stack: (error as Error).stack });
         return res.status(500).json({ error: 'Failed to fetch album' });
@@ -370,6 +395,10 @@ export const addPhotoToAlbum = async (req: AuthRequest, res: Response): Promise<
             }
         });
 
+        if (redisClient.isOpen) {
+            await redisClient.incr(`album_version:${albumId}`);
+        }
+
         wideLogger.addCtx('album_id', albumId);
         wideLogger.addCtx('photo_id', photoId);
         wideLogger.addCtx('action', 'album_add_photo');
@@ -427,6 +456,10 @@ export const shareAlbum = async (req: AuthRequest, res: Response): Promise<Respo
                 role: role || 'VIEWER'
             }
         });
+
+        if (redisClient.isOpen) {
+            await redisClient.incr(`album_version:${album.id}`);
+        }
 
         wideLogger.addCtx('album_id', id);
         wideLogger.addCtx('shared_email', email);

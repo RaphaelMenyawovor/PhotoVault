@@ -7,6 +7,8 @@ import type { UploadApiResponse } from 'cloudinary';
 import { extractPublicIdFromUrl } from '../utils/image.utils.js';
 import { wideLogger } from '../utils/wideLogger.js';
 
+import redisClient from '../configs/redis.js';
+
 export const updateAvatar = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
         if (!req.file) {
@@ -24,10 +26,6 @@ export const updateAvatar = async (req: AuthRequest, res: Response): Promise<Res
         if (user.avatar) {
             const publicId = extractPublicIdFromUrl(user.avatar);
             if (publicId) {
-                // Fire and forget deletion, or await it? 
-                // Better to await to handle errors or at least log
-                // But failure to delete shouldn't block new upload strictly, 
-                // though managing storage is good.
                 try {
                     await cloudinary.uploader.destroy(publicId);
                 } catch (err) {
@@ -65,6 +63,10 @@ export const updateAvatar = async (req: AuthRequest, res: Response): Promise<Res
             select: { id: true, email: true, avatar: true, role: true } // Return safe user object
         });
 
+        if (redisClient.isOpen) {
+            await redisClient.del(`user:${userId}`);
+        }
+
         wideLogger.addCtx('action', 'user_update_avatar');
         wideLogger.addCtx('avatar_url', result.secure_url);
 
@@ -79,6 +81,16 @@ export const updateAvatar = async (req: AuthRequest, res: Response): Promise<Res
 export const getMe = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
         const userId = req.user!.id; // Guaranteed by auth middleware
+        const cacheKey = `user:${userId}`;
+        let cached = null;
+
+        if (redisClient.isOpen) {
+            cached = await redisClient.get(cacheKey);
+        }
+        
+        if (cached) {
+            return res.json(JSON.parse(cached));
+        }
 
         const user = await prisma.user.findUnique({
             where: { id: userId },
@@ -94,6 +106,10 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<Response> 
 
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (redisClient.isOpen) {
+            await redisClient.setEx(cacheKey, 86400, JSON.stringify(user)); // Cache user profile for 1 day
         }
 
         wideLogger.addCtx('action', 'user_get_me');

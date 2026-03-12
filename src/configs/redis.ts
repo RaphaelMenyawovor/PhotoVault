@@ -5,9 +5,24 @@ dotenv.config();
 
 export type RedisClientType = ReturnType<typeof createClient>;
 
-const redisClient = createClient({
-  url: process.env.REDIS_URL || 'redis://localhost:6379'
-});
+const envUrl = process.env.REDIS_URL;
+let redisUrl = 'redis://localhost:6379';
+if (envUrl && !envUrl.includes('placeholder')) {
+    try {
+        new URL(envUrl);
+        redisUrl = envUrl;
+    } catch {
+        redisUrl = 'redis://localhost:6379';
+    }
+}
+const isTls = redisUrl.startsWith('rediss://');
+
+const config: Record<string, any> = { url: redisUrl };
+if (isTls) {
+  config.socket = { tls: true as const, rejectUnauthorized: false };
+}
+
+const redisClient = createClient(config);
 
 redisClient.on('error', (err) => {
   if (process.env.NODE_ENV !== 'test') {
