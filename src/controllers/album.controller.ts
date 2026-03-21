@@ -254,10 +254,16 @@ export const revokeAccess = async (req: AuthRequest, res: Response): Promise<Res
         const { id } = req.params;
         const { email } = req.body;
 
-        const album = await prisma.album.findUnique({
-            where: { id: id as string },
-            select: { id: true, userId: true, deletedAt: true }
-        });
+        const [album, userRevoke] = await Promise.all([
+            prisma.album.findUnique({
+                where: { id: id as string },
+                select: { id: true, userId: true, deletedAt: true }
+            }),
+            prisma.user.findUnique({
+                where: { email },
+                select: { id: true }
+            })
+        ]);
 
         if (!album || album.deletedAt) {
             return res.status(404).json({ error: 'Album not found' });
@@ -266,11 +272,6 @@ export const revokeAccess = async (req: AuthRequest, res: Response): Promise<Res
         if (album.userId !== req.user!.id) {
             return res.status(403).json({ error: 'Forbidden' });
         }
-
-        const userRevoke = await prisma.user.findUnique({
-            where: { email },
-            select: { id: true }
-        });
 
         if (!userRevoke) {
             return res.status(404).json({ error: 'User not found' });
@@ -351,11 +352,13 @@ export const addPhotoToAlbum = async (req: AuthRequest, res: Response): Promise<
     try {
         const { albumId, photoId } = req.body;
 
-        const album = await prisma.album.findUnique({
-            where: { id: albumId },
-            include: { sharedWith: true }
-        });
-        const photo = await prisma.photo.findUnique({ where: { id: photoId } });
+        const [album, photo] = await Promise.all([
+            prisma.album.findUnique({
+                where: { id: albumId },
+                include: { sharedWith: true }
+            }),
+            prisma.photo.findUnique({ where: { id: photoId } })
+        ]);
 
         if (!album || !photo || album.deletedAt) {
             return res.status(404).json({ error: 'Album or Photo not found' });
@@ -414,10 +417,16 @@ export const shareAlbum = async (req: AuthRequest, res: Response): Promise<Respo
         const { id } = req.params;
         const { email, role } = req.body;
 
-        const album = await prisma.album.findUnique({
-            where: { id: id as string },
-            select: { id: true, userId: true, deletedAt: true }
-        });
+        const [album, userToShare] = await Promise.all([
+            prisma.album.findUnique({
+                where: { id: id as string },
+                select: { id: true, userId: true, deletedAt: true }
+            }),
+            prisma.user.findUnique({
+                where: { email },
+                select: { id: true }
+            })
+        ]);
 
         if (!album || album.deletedAt) {
             return res.status(404).json({ error: 'Album not found' });
@@ -426,11 +435,6 @@ export const shareAlbum = async (req: AuthRequest, res: Response): Promise<Respo
         if (album.userId !== req.user!.id) {
             return res.status(403).json({ error: 'Forbidden' });
         }
-
-        const userToShare = await prisma.user.findUnique({
-            where: { email },
-            select: { id: true }
-        });
 
         if (!userToShare) {
             return res.status(404).json({ error: 'User not found' });
