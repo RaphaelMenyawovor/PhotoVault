@@ -81,7 +81,7 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
         wideLogger.addCtx('user_id', user.id);
         wideLogger.addCtx('action', 'user_login');
         return res.json({ message: 'Login successful', user: { id: user.id, email: user.email, role: user.role } });
-    } catch (error) {
+    } catch (_error) {
         return res.status(500).json({ error: 'Internal server error' });
     }
 };
@@ -172,7 +172,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<Respon
 export const googleCallback = async (req: Request, res: Response): Promise<void | Response> => {
     try {
         // User is attached to req.user by passport
-        const user = req.user as any;
+        const user = req.user;
 
         if (!user) {
             return res.status(401).json({ error: 'Authentication failed' });
@@ -190,7 +190,7 @@ export const googleCallback = async (req: Request, res: Response): Promise<void 
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
-            maxAge: 86400000 // 1 day
+            maxAge: 86400000 // 1 day in milliseconds
         });
 
         // Redirect to Frontend/Mobile App without token in URL
